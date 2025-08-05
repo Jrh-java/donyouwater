@@ -1,0 +1,14 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+1 所有与调用接口相关的操作请先参考@/utils/request.ts文件,返回的结果已经是res.data请不要在项目中写xxx.data,直接使用res即可,并且在@/api目录下新建函数然后在组件中调用,需要使用authApi(proxy)代理头
+2 不要在项目中使用vh和vw 
+3 dialog elMessage弹窗都需要添加lock-scroll=false 和lockScroll=false
+4 el-select和el-date-picker都需要添加 :teleported="false"的属性
+5 样式工具使用scss
+6 除非更新了主要文件 不然不需要帮我执行npm run dev
+7 如果有添加package包使用 pnpm包管理工具
+8 不要使用size="small" 
+
