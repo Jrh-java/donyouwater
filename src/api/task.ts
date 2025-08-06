@@ -59,6 +59,8 @@ export interface TaskSaveRequest {
   routeManagementId: string
   desc?: string
   file?: string
+  approveUser?: string
+  approveUserName?: string
   taskExcutorInfoDTOList: Array<{
     excutorId: string
     excutorName: string
@@ -77,6 +79,8 @@ export interface TaskUpdateRequest {
   routeManagementId: string
   desc?: string
   file?: string
+  approveUser?: string
+  approveUserName?: string
   taskExcutorInfoDTOS: Array<{
     excutorId: string
     excutorName: string
@@ -96,6 +100,7 @@ export interface TaskDetailResponse {
   routeManagementId: string
   desc?: string
   file?: string
+  approveUser?: string
   crtTime?: string
   crtUser?: string
   crtName?: string

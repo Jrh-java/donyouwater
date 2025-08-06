@@ -57,6 +57,25 @@
           />
         </el-form-item>
 
+      <el-form-item label="审批人员" prop="approveUser">
+          <el-tree-select
+            v-model="taskForm.approveUser"
+            :data="departmentTreeData"
+            placeholder="请选择审批人员"
+            style="width: 100%"
+            check-strictly
+            :teleported="false"
+            :loading="employeesLoading"
+            node-key="value"
+            default-expand-all
+            :props="{
+              label: 'label',
+              children: 'children',
+              disabled: 'disabled'
+            }"
+          />
+        </el-form-item>
+
       <el-row :gutter="20">
         <el-col :span="12">
           <el-form-item label="开始时间" prop="startTime">
@@ -288,6 +307,7 @@ const taskForm = reactive({
   taskName: '',
   taskType: '',
   executors: [] as string[],
+  approveUser: '',
   startTime: null as any,
   endTime: null as any,
   cycle: '1',
@@ -308,6 +328,9 @@ const taskFormRules = {
   ],
   executors: [
     { required: true, message: '请选择执行人员', trigger: 'change' }
+  ],
+  approveUser: [
+    { required: true, message: '请选择审批人员', trigger: 'change' }
   ],
   startTime: [
     { required: true, message: '请选择开始时间', trigger: 'change' }
@@ -340,6 +363,7 @@ watch(() => props.modelValue, async (newValue) => {
           taskName: taskDetail.taskName,
           taskType: taskDetail.taskType,
           executors: taskDetail.taskExcutorInfoVOS?.map(executor => executor.excutorId) || [],
+          approveUser: taskDetail.approveUser || '',
           startTime: taskDetail.startTime,
           endTime: taskDetail.endTime,
           cycle: taskDetail.taskCycle,
@@ -366,6 +390,7 @@ const resetTaskForm = () => {
     taskName: '',
     taskType: '',
     executors: [],
+    approveUser: '',
     startTime: null,
     endTime: null,
     cycle: '1',
@@ -405,6 +430,10 @@ const handleConfirm = () => {
           objectName: file.objectName
         }))
         
+        // 获取审批人名称
+        const approveEmployee = findEmployeeInTree(departmentTreeData.value, taskForm.approveUser)
+        const approveUserName = approveEmployee?.label || ''
+        
         if (props.isEdit) {
           const updateData: TaskUpdateRequest = {
             id: taskForm.id,
@@ -418,6 +447,8 @@ const handleConfirm = () => {
             remindType: taskForm.remindType,
             routeManagementId: taskForm.location,
             desc: taskForm.description,
+            approveUser: taskForm.approveUser,
+            approveUserName: approveUserName,
             taskExcutorInfoDTOS: executorList,
          
           } as any
@@ -434,6 +465,8 @@ const handleConfirm = () => {
             remindType: taskForm.remindType,
             routeManagementId: taskForm.location,
             desc: taskForm.description,
+            approveUser: taskForm.approveUser,
+            approveUserName: approveUserName,
             taskExcutorInfoDTOList: executorList
           } as any
           await addTask(saveData)

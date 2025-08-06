@@ -59,6 +59,14 @@
 
         <div class="info-item">
           <div class="info-label">
+            <el-icon><User /></el-icon>
+            <span>审批人员</span>
+          </div>
+          <div class="info-value">{{ taskDetail.approveUserName || '-' }}</div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-label">
             <el-icon><LocationFilled /></el-icon>
             <span>任务地点</span>
           </div>
@@ -390,4 +398,4 @@ const handleClose = () => {
 :deep(.el-dialog__footer) {
   padding: 0;
 }
-</style> 
+</style>

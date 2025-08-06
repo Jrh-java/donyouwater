@@ -26,11 +26,15 @@
             <!-- 这里需要根据实际的人员数据来填充选项 -->
           </el-select>
         </el-form-item>
+        <el-form-item label="审批人员">
+          <el-input v-model="taskForm.approveUserName" readonly />
+        </el-form-item>
         <el-form-item label="开始时间">
           <el-date-picker
             v-model="taskForm.startTime"
             type="datetime"
             placeholder="选择开始时间"
+            :teleported="false"
             disabled
           />
         </el-form-item>
@@ -39,18 +43,19 @@
             v-model="taskForm.endTime"
             type="datetime"
             placeholder="选择结束时间"
+            :teleported="false"
             disabled
           />
         </el-form-item>
         <el-form-item label="任务周期">
-          <el-select v-model="taskForm.taskCycle" disabled>
+          <el-select v-model="taskForm.taskCycle" :teleported="false" disabled>
             <el-option label="每天" value="1" />
             <el-option label="每周" value="2" />
             <el-option label="每月" value="3" />
           </el-select>
         </el-form-item>
         <el-form-item label="提醒方式">
-          <el-select v-model="taskForm.remindType" disabled>
+          <el-select v-model="taskForm.remindType" :teleported="false" disabled>
             <el-option label="短信" value="1" />
             <el-option label="邮件" value="2" />
             <el-option label="系统通知" value="3" />
@@ -142,6 +147,7 @@ const taskForm = reactive({
   taskName: '',
   taskType: '',
   executors: [] as string[],
+  approveUserName: '',
   startTime: '',
   endTime: '',
   taskCycle: '',
@@ -184,6 +190,7 @@ const loadTaskDetail = async () => {
       taskName: taskDetailData.taskName,
       taskType: taskDetailData.taskType,
       executors: taskDetailData.taskExcutorInfoVOS || [],
+      approveUserName: taskDetailData.approveUser || '',
       startTime: taskDetailData.startTime,
       endTime: taskDetailData.endTime,
       taskCycle: taskDetailData.taskCycle,

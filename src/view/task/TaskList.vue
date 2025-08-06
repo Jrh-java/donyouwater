@@ -99,6 +99,11 @@
             <span>{{ row.excutorName }}</span>
           </template>
         </el-table-column>
+        <!-- <el-table-column label="审批人员" width="120">
+          <template #default="{ row }">
+            <span>{{ row.approveUserName || '-' }}</span>
+          </template>
+        </el-table-column> -->
         <el-table-column label="执行时间">
           <template #default="scope">
             {{ scope.row.startTime }} ~ {{ scope.row.endTime }}
