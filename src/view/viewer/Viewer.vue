@@ -34,6 +34,8 @@
     <GateControlPanel :show="showGateControlPanel" :panel-title="selectedGateData?.title"
       :device-code="selectedGateData?.deviceCode" :gate-id="selectedGateData?.gateId" @close="closeGateControlPanel" @animate-gate="handleGateAnimation" />
     <DamDetailModal :show="showDamDetailModal" :dam-id="selectedDamData?.id" @close="closeDamDetailModal" />
+    <EnvironmentMonitorPanel :show="showEnvironmentPanel" :device-data="selectedBillboardData?.deviceData" @close="closeEnvironmentPanel" />
+    <PressureMonitorPanel :show="showPressurePanel" :device-data="selectedBillboardData?.deviceData" @close="closePressurePanel" />
   </div>
 </template>
 
@@ -47,6 +49,8 @@ import VideoMonitorPanel from './viewerComponent/VideoMonitorPanel.vue'; // 引�
 import DisplacementMonitorPanel from './viewerComponent/DisplacementMonitorPanel.vue'; // 引入位移监测Panel组件
 import GateControlPanel from './viewerComponent/GateControlPanel.vue'; // 引入闸门控制Panel组件
 import DamDetailModal from '@/view/viewer/monitor/leftComponent/DamDetailModal.vue'; // 引入水坝详情弹窗
+import EnvironmentMonitorPanel from './viewerComponent/EnvironmentMonitorPanel.vue'; // 引入环境监测Panel组件
+import PressureMonitorPanel from './viewerComponent/PressureMonitorPanel.vue'; // 引入压力监测Panel组件
 import PolylineTrailMaterialProperty from '@/cesium/PolylineTrailMaterial.js'; // 引入自定义材质
 import { getReservoirPage, getReservoirDeviceManagementInfo } from '@/api/reservoir'; // 导入水库API
 import { getDeviceManagementPage } from '@/api/device'; // 导入设备API
@@ -66,6 +70,8 @@ const showVideoPanel = ref(false);
 const showDisplacementPanel = ref(false); // 控制位移监测面板的显示
 const showGateControlPanel = ref(false); // 控制闸门控制面板的显示
 const showDamDetailModal = ref(false); // 控制水坝详情弹窗的显示
+const showEnvironmentPanel = ref(false); // 控制环境监测面板的显示
+const showPressurePanel = ref(false); // 控制压力监测面板的显示
 const selectedBillboardData = ref(null); // 用于视频和位移监测
 const selectedDamData = ref(null); // 用于水坝详情
 const selectedGateData = ref(null); // 用于闸门控制
@@ -628,6 +634,20 @@ onMounted(() => {
             deviceData: data.deviceData
           };
           showDisplacementPanel.value = true;
+        }else if(data.mcsType === 'env'){
+          // 处理环境监测设备
+          selectedBillboardData.value = {
+            title: data.title || '环境监测',
+            deviceData: data.deviceData
+          };
+          showEnvironmentPanel.value = true;
+        }else if(data.mcsType === 'pressure'){
+          // 处理压力监测设备
+          selectedBillboardData.value = {
+            title: data.title || '压力监测',
+            deviceData: data.deviceData
+          };
+          showPressurePanel.value = true;
         }
       } else if (data.type === 'dam') {
         selectedDamData.value = data;
@@ -743,6 +763,18 @@ const handleGateAnimation = (animationData) => {
 const closeDamDetailModal = () => {
   showDamDetailModal.value = false;
   selectedDamData.value = null;
+};
+
+// 关闭环境监测面板
+const closeEnvironmentPanel = () => {
+  showEnvironmentPanel.value = false;
+  selectedBillboardData.value = null;
+};
+
+// 关闭压力监测面板
+const closePressurePanel = () => {
+  showPressurePanel.value = false;
+  selectedBillboardData.value = null;
 };
 
 </script>
