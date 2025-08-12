@@ -163,6 +163,7 @@
                 v-model="formData.gateStationId" 
                 :data="gateStationTreeData"
                 placeholder="请选择所属闸站" 
+                :expand-all="true"
                 :teleported="false"
                 clearable
                 filterable
@@ -193,9 +194,9 @@
           <el-col :span="12">
             <el-form-item label="通知方式" prop="notifyType">
               <el-select v-model="formData.notifyType" placeholder="请选择" :teleported="false">
-                <el-option label="小程序" value="1" />
-                <el-option label="短信" value="2" />
-                <el-option label="邮件" value="3" />
+                <el-option label="移动端" value="1" />
+                <el-option label="站内通知" value="2" />
+                <!-- <el-option label="邮件" value="3" /> -->
               </el-select>
             </el-form-item>
           </el-col>

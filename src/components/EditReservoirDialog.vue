@@ -1,5 +1,5 @@
 <template>
-  <el-dialog v-model="dialogVisible" title="编辑水库" width="1000px" :before-close="handleClose" destroy-on-close :lock-scroll="false">
+  <el-dialog v-model="dialogVisible" title="编辑流域" width="1000px" :before-close="handleClose" destroy-on-close :lock-scroll="false">
     <div class="add-reservoir-container">
       <!-- 左侧Tab切换 -->
       <div class="left-tabs">
@@ -16,12 +16,12 @@
           <el-form ref="basicFormRef" :model="basicForm" :rules="basicRules" label-width="120px" label-position="left">
             <el-row :gutter="20">
               <el-col :span="12">
-                <el-form-item label="水库名称" prop="name" required>
+                <el-form-item label="名称" prop="name" required>
                   <el-input v-model="basicForm.name" placeholder="请输入" />
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="水库编码" prop="code" required>
+                <el-form-item label="编码" prop="code" required>
                   <el-input v-model="basicForm.code" placeholder="请输入" />
                 </el-form-item>
               </el-col>
@@ -29,7 +29,7 @@
 
             <el-row :gutter="20">
               <el-col :span="12">
-                <el-form-item label="水库类型" prop="type" required>
+                <el-form-item label="类型" prop="type" required>
                   <el-select v-model="basicForm.type" placeholder="请选择" style="width: 100%">
                     <el-option label="大(一)型" value="large_type_1" />
                     <el-option label="大(二)型" value="large_type_2" />
@@ -50,7 +50,7 @@
 
             <el-row :gutter="20">
               <el-col :span="12">
-                <el-form-item label="水库地址" prop="location" required>
+                <el-form-item label="地址" prop="location" required>
                   <el-input v-model="basicForm.location" placeholder="请输入" />
                 </el-form-item>
               </el-col>
@@ -461,10 +461,10 @@
           </el-form>
         </div>
 
-        <!-- 水库图片 -->
+        <!-- 流域图片 -->
         <div v-show="activeTab === 'images'" class="tab-content">
           <div class="images-header">
-            <span class="required-label">* 请至少上传一张水库图片</span>
+            <span class="required-label">* 请至少上传一张流域图片</span>
           </div>
           <div class="image-container">
             <div v-if="imagesList.length === 0" class="no-images">
@@ -493,7 +493,7 @@
                   上传
                 </el-button>
 
-                <div class="image-display"> <img :src="imagesList[currentImageIndex]?.url" alt="水库图片" /> <el-button
+                <div class="image-display"> <img :src="imagesList[currentImageIndex]?.url" alt="流域图片" /> <el-button
                     class="delete-image-btn" type="danger" circle @click="deleteCurrentImage"> <el-icon>
                       <Delete />
                     </el-icon> </el-button> <el-button v-if="imagesList.length > 1" class="nav-btn prev-btn" circle
@@ -587,7 +587,7 @@ const tabs = ref([
   { key: 'dam', label: '大坝信息' },
   { key: 'features', label: '特征值' },
   { key: 'dispatch', label: '调度原则' },
-  { key: 'images', label: '水库图片*' }
+  { key: 'images', label: '流域图片*' }
 ]);
 
 // 当前激活的Tab
@@ -683,19 +683,19 @@ const fileModificationState = reactive({
 // 表单验证规则
 const basicRules = {
   name: [
-    { required: true, message: '请输入水库名称', trigger: 'blur' }
+    { required: true, message: '请输入名称', trigger: 'blur' }
   ],
   code: [
-    { required: true, message: '请输入水库编码', trigger: 'blur' }
+    { required: true, message: '请输入编码', trigger: 'blur' }
   ],
   type: [
-    { required: true, message: '请选择水库类型', trigger: 'change' }
+    { required: true, message: '请选择类型', trigger: 'change' }
   ],
   catchmentArea: [
     { required: true, message: '请输入集水面积', trigger: 'blur' }
   ],
   location: [
-    { required: true, message: '请输入水库地址', trigger: 'blur' }
+    { required: true, message: '请输入地址', trigger: 'blur' }
   ],
   province: [
     { required: true, message: '请选择省份', trigger: 'change' }
@@ -1016,7 +1016,7 @@ const handleSave = async () => {
       '大坝信息': 'dam', 
       '特征值': 'features',
       '调度原则': 'dispatch',
-      '水库图片': 'images'
+      '流域图片': 'images'
     };
     
     // 验证基本信息
@@ -1044,9 +1044,9 @@ const handleSave = async () => {
       errorTabs.push('调度原则');
     }
     
-    // 验证水库图片
+    // 验证流域图片
     if (imagesList.value.length === 0) {
-      errorTabs.push('水库图片');
+      errorTabs.push('流域图片');
     }
 
     if (errorTabs.length > 0) {

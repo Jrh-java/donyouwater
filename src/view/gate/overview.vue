@@ -12,11 +12,11 @@
       <!-- 顶部搜索和操作区域 -->
       <div class="search-container">
         <el-form :inline="true" :model="searchForm" class="search-form">
-          <el-form-item label="水库名称/编码/地址">
-            <el-input v-model="searchForm.nameOrCodeOrLocation" placeholder="水库名称/编码/地址"  />
+          <el-form-item label="名称/编码/地址">
+            <el-input v-model="searchForm.nameOrCodeOrLocation" placeholder="名称/编码/地址"  />
           </el-form-item>
-          <el-form-item label="水库类型">
-            <el-select v-model="searchForm.type" placeholder="水库类型" clearable style='width:100px' :teleported='false'>
+          <el-form-item label="类型">
+            <el-select v-model="searchForm.type" placeholder="类型" clearable style='width:100px' :teleported='false'>
               <el-option label="大(一)型" value="large_type_1" />
               <el-option label="大(二)型" value="large_type_2" />
               <el-option label="中型" value="middle_type" />

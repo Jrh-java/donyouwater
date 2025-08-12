@@ -249,8 +249,8 @@ const updateDisplacementChart = () => {
     },
     yAxis: {
        type: 'value',
-       min: -100,
-       max: 100,
+       min: -15,
+       max: 15,
        axisLine: {
          show: false
        },
@@ -512,8 +512,8 @@ const initDisplacementMonitoringChart = () => {
       },
       yAxis: {
         type: 'value',
-        min: -100,
-        max: 100,
+        min: -15,
+        max: 15,
         axisLine: {
           show: false
         },

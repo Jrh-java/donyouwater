@@ -351,7 +351,7 @@ const initChart = (chartRef, titleText, data, isEmpty = false, isForward = true)
         yAxisConfig = {
           type: 'value',
           min: 0,
-          max: 100
+          max: 15
         };
         // 正向数据取绝对值，确保在0-100范围内
         processedData = data.moveNum.map(value => Math.abs(value));
@@ -359,7 +359,7 @@ const initChart = (chartRef, titleText, data, isEmpty = false, isForward = true)
         // 逆向图表：0到-100
         yAxisConfig = {
           type: 'value',
-          min: -100,
+          min: -15,
           max: 0
         };
         // 逆向数据转为负值，确保在-100到0范围内

@@ -232,8 +232,9 @@ onMounted(() => {
   align-items: center;
   height: 100%;
   width: 100%;
-  // background: linear-gradient(135deg, #fff, #64b5f6);
-  background: rgba(235, 235, 235, 0.5);
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 25%, #90caf9 50%, #64b5f6 75%, #42a5f5 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
   overflow: hidden;
   position: relative;
   
@@ -244,11 +245,127 @@ onMounted(() => {
     left: 0;
     right: 0;
     bottom: 0;
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="%23ffffff10" fill-opacity="0.1" d="M0,96L48,112C96,128,192,160,288,186.7C384,213,480,235,576,213.3C672,192,768,128,864,128C960,128,1056,192,1152,213.3C1248,235,1344,213,1392,202.7L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>');
+    background-image: 
+      radial-gradient(circle at 20% 50%, rgba(66, 165, 245, 0.4) 0%, transparent 60%),
+      radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.6) 0%, transparent 50%),
+      radial-gradient(circle at 40% 80%, rgba(144, 202, 249, 0.5) 0%, transparent 55%),
+      radial-gradient(circle at 70% 60%, rgba(187, 222, 251, 0.4) 0%, transparent 45%);
+    z-index: 0;
+    animation: breathe 10s ease-in-out infinite, drift 20s linear infinite;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="%23ffffff" fill-opacity="0.2" d="M0,96L48,112C96,128,192,160,288,186.7C384,213,480,235,576,213.3C672,192,768,128,864,128C960,128,1056,192,1152,213.3C1248,235,1344,213,1392,202.7L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>');
     background-position: bottom;
     background-repeat: no-repeat;
-    background-size: 100% 50%;
+    background-size: 120% 60%;
     z-index: 0;
+    animation: float 8s ease-in-out infinite, wave 12s linear infinite;
+  }
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px);
+  }
+  25% {
+    transform: translateY(-15px) translateX(5px);
+  }
+  50% {
+    transform: translateY(-25px) translateX(-3px);
+  }
+  75% {
+    transform: translateY(-10px) translateX(8px);
+  }
+}
+
+@keyframes wave {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-100px);
+  }
+}
+
+@keyframes breathe {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+  33% {
+    opacity: 0.7;
+    transform: scale(1.08) rotate(1deg);
+  }
+  66% {
+    opacity: 0.9;
+    transform: scale(0.95) rotate(-0.5deg);
+  }
+}
+
+@keyframes drift {
+  0% {
+    transform: translateX(0px) translateY(0px);
+  }
+  25% {
+    transform: translateX(20px) translateY(-10px);
+  }
+  50% {
+    transform: translateX(-15px) translateY(15px);
+  }
+  75% {
+    transform: translateX(10px) translateY(-5px);
+  }
+  100% {
+    transform: translateX(0px) translateY(0px);
+  }
+}
+
+@keyframes buttonGlow {
+  0%, 100% {
+    box-shadow: 0 4px 15px rgba(25, 118, 210, 0.4);
+  }
+  50% {
+    box-shadow: 0 8px 25px rgba(25, 118, 210, 0.6), 0 0 30px rgba(79, 172, 254, 0.3);
+  }
+}
+
+@keyframes buttonPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes boxFloat {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
   }
 }
 
@@ -256,16 +373,35 @@ onMounted(() => {
   display: flex;
   width: 900px;
   height: 500px;
-  background-color: white;
-  border-radius: 10px;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 20px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   z-index: 1;
+  position: relative;
+  animation: boxFloat 6s ease-in-out infinite;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%, rgba(255, 255, 255, 0.05) 100%);
+    border-radius: 20px;
+    z-index: -1;
+  }
 }
 
 .login-left {
   flex: 1;
-  background-color: #1976d2;
+  background: linear-gradient(180deg, rgb(0 144 168 / 34%) 0%
+0%
+, rgb(255 255 255 / 30%) 100%);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -282,11 +418,12 @@ onMounted(() => {
     left: 0;
     right: 0;
     height: 40%;
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="%23ffffff" fill-opacity="0.2" d="M0,224L40,213.3C80,203,160,181,240,181.3C320,181,400,203,480,224C560,245,640,267,720,261.3C800,256,880,224,960,218.7C1040,213,1120,235,1200,245.3C1280,256,1360,256,1400,256L1440,256L1440,320L1400,320C1360,320,1280,320,1200,320C1120,320,1040,320,960,320C880,320,800,320,720,320C640,320,560,320,480,320C400,320,320,320,240,320C160,320,80,320,40,320L0,320Z"></path></svg>');
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="%23ffffff" fill-opacity="0.25" d="M0,224L40,213.3C80,203,160,181,240,181.3C320,181,400,203,480,224C560,245,640,267,720,261.3C800,256,880,224,960,218.7C1040,213,1120,235,1200,245.3C1280,256,1360,256,1400,256L1440,256L1440,320L1400,320C1360,320,1280,320,1200,320C1120,320,1040,320,960,320C880,320,800,320,720,320C640,320,560,320,480,320,400,320,320,320,240,320C160,320,80,320,40,320L0,320Z"></path></svg>');
     background-position: bottom;
     background-repeat: no-repeat;
     background-size: 100%;
     z-index: 0;
+    animation: float 8s ease-in-out infinite;
   }
 }
 
@@ -325,6 +462,8 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  background: rgba(255, 255, 255, 0.35);
+  border-left: 1px solid rgba(255, 255, 255, 0.25);
 }
 
 .login-form {
@@ -333,12 +472,14 @@ onMounted(() => {
   h2 {
     font-size: 24px;
     margin-bottom: 30px;
-    color: #333;
+    color: #1f2937;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.06);
     font-family: 'YouSheBiaoTiHei', sans-serif;
     
     span {
       font-size: 14px;
-      color: #999;
+      color: rgba(0,0,0,0.45);
       margin-left: 10px;
       font-family: 'DINCond-Bold', sans-serif;
     }
@@ -398,8 +539,48 @@ onMounted(() => {
 .login-button {
   width: 100%;
   height: 40px;
-  background-color: #1976d2;
+  background: linear-gradient(135deg, #1976d2 0%, #42a5f5 100%);
   border: none;
   font-size: 16px;
+  border-radius: 8px;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(25, 118, 210, 0.4);
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s;
+  }
+  
+  &:hover {
+    background: linear-gradient(135deg, #1565c0 0%, #1976d2 50%, #42a5f5 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(25, 118, 210, 0.6), 0 0 30px rgba(79, 172, 254, 0.3);
+    animation: buttonPulse 1.5s ease-in-out infinite;
+    
+    &::before {
+      left: 100%;
+    }
+  }
+  
+  &:active {
+    transform: translateY(0px);
+    box-shadow: 0 4px 15px rgba(25, 118, 210, 0.4);
+  }
+  
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.3);
+  }
 }
 </style>
