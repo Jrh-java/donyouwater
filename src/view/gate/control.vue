@@ -405,13 +405,18 @@ const fetchGateExtendedInfo = async (gateStationCode) => {
         
         // 设置闸口选项
         if (Array.isArray(extInfo)) {
+          const currentSelectedPort = selectedGatePort.value;
           gatePortOptions.value = extInfo.map((item, index) => ({
             label: item.devpoint.includes('IRDA2') ? '二号闸口' : '一号闸口',
             value: item.devpoint
           }));
           
-          // 默认选择第一个闸口
-          if (gatePortOptions.value.length > 0) {
+          // 如果当前有选中的闸口且在新的选项中存在，保持选中状态
+          if (currentSelectedPort && gatePortOptions.value.some(option => option.value === currentSelectedPort)) {
+            selectedGatePort.value = currentSelectedPort;
+            handleGatePortChange(currentSelectedPort);
+          } else if (gatePortOptions.value.length > 0 && !selectedGatePort.value) {
+            // 只在没有选中闸口时才设置默认值
             selectedGatePort.value = gatePortOptions.value[0].value;
             handleGatePortChange(selectedGatePort.value);
           }
@@ -807,20 +812,20 @@ const openGateLogic = async () => {
   
   try {
     // 先执行停闸操作
-    console.log('开闸前先执行停闸操作...');
-    const stopPayload = {
-      devpoint: selectedGatePort.value,
-      controlval: '3' // 停止
-    };
-    await gateOnOrOff(controlDeviceCode.value, JSON.stringify(stopPayload));
+    // console.log('开闸前先执行停闸操作...');
+    // const stopPayload = {
+    //   devpoint: selectedGatePort.value,
+    //   controlVal: '3' // 停止
+    // };
+    // await gateOnOrOff(controlDeviceCode.value, JSON.stringify(stopPayload));
     
-    // 等待一段时间确保停闸操作完成
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // // 等待一段时间确保停闸操作完成
+    // await new Promise(resolve => setTimeout(resolve, 1000));
     
     // 执行开闸操作
     const openPayload = {
       devpoint: selectedGatePort.value,
-      controlval: '1' // 开阀
+      controlVal: '1' // 开阀
     };
     await gateOnOrOff(controlDeviceCode.value, JSON.stringify(openPayload));
     ElMessage.success('开闸操作成功');
@@ -841,20 +846,20 @@ const closeGateLogic = async () => {
   
   try {
     // 先执行停闸操作
-    console.log('关闸前先执行停闸操作...');
-    const stopPayload = {
-      devpoint: selectedGatePort.value,
-      controlval: '3' // 停止
-    };
-    await gateOnOrOff(controlDeviceCode.value, JSON.stringify(stopPayload));
+    // console.log('关闸前先执行停闸操作...');
+    // const stopPayload = {
+    //   devpoint: selectedGatePort.value,
+    //   controlVal: '3' // 停止
+    // };
+    // await gateOnOrOff(controlDeviceCode.value, JSON.stringify(stopPayload));
     
-    // 等待一段时间确保停闸操作完成
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // // 等待一段时间确保停闸操作完成
+    // await new Promise(resolve => setTimeout(resolve, 1000));
     
     // 执行关闸操作
     const closePayload = {
       devpoint: selectedGatePort.value,
-      controlval: '2' // 关阀
+      controlVal: '2' // 关阀
     };
     await gateOnOrOff(controlDeviceCode.value, JSON.stringify(closePayload));
     ElMessage.success('关闸操作成功');
@@ -880,7 +885,7 @@ const stopGate = async () => {
   try {
     const stopPayload = {
       devpoint: selectedGatePort.value,
-      controlval: '3' // 停止
+      controlVal: '3' // 停止
     };
     await gateOnOrOff(controlDeviceCode.value, JSON.stringify(stopPayload));
     ElMessage.success('停闸操作成功');
@@ -894,8 +899,9 @@ const stopGate = async () => {
 
 // 刷新闸门状态
 const refreshGateStatus = async () => {
-  if (selectedGateId.value) {
-    await handleGateChange(selectedGateId.value);
+  if (selectedGateId.value && selectedGate.value && selectedGate.value.gateStationCode) {
+    // 只刷新闸门扩展信息，不重新获取摄像设备列表
+    await fetchGateExtendedInfo(selectedGate.value.gateStationCode);
   }
 };
 

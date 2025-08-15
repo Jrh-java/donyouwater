@@ -251,7 +251,7 @@ const openGateLogic = async () => {
     // 执行开闸操作
     const openPayload = {
       devpoint: selectedGatePort.value,
-      controlval: '1' // 开阀
+      controlVal: '1' // 开阀
     };
     await gateOnOrOff(props.deviceCode, JSON.stringify(openPayload));
     ElMessage.success('开闸操作成功');
@@ -284,7 +284,7 @@ const closeGateLogic = async () => {
     // 执行关闸操作
     const closePayload = {
       devpoint: selectedGatePort.value,
-      controlval: '2' // 关阀
+      controlVal: '2' // 关阀
     };
     await gateOnOrOff(props.deviceCode, JSON.stringify(closePayload));
     ElMessage.success('关闸操作成功');
@@ -317,7 +317,7 @@ const stopGate = async () => {
   try {
     const stopPayload = {
       devpoint: selectedGatePort.value,
-      controlval: '3' // 停止
+      controlVal: '3' // 停止
     };
     await gateOnOrOff(props.deviceCode, JSON.stringify(stopPayload));
     ElMessage.success('停闸操作成功');

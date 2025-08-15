@@ -10,7 +10,7 @@
         <div class="top-section">
           <img :src="damDetail.image" alt="水库图片" class="dam-image">
           <div class="dam-summary-info">
-            <p><strong>大坝规模：</strong>{{ damDetail.scale }}</p>
+            <p><strong>流域规模：</strong>{{ damDetail.scale }}</p>
             <p><strong>结构类型：</strong>{{ damDetail.structureType }}</p>
             <p><strong>安全等级：</strong><span class="safety-level" :class="'level-' + damDetail.safetyLevel.toLowerCase()">{{ damDetail.safetyLevel }}</span></p>
             <p><strong>建成时间：</strong>{{ damDetail.builtTime }}</p>
@@ -147,7 +147,7 @@
       <div v-else-if="loading" class="modal-body loading-container">
         <div class="loading-content">
           <div class="loading-spinner"></div>
-          <p>正在加载水库详情...</p>
+          <p>正在加载...</p>
         </div>
       </div>
       
@@ -463,13 +463,12 @@ const fetchDamDetail = async (id: string) => {
 // 辅助函数：获取大坝规模
 const getDamScale = (reservoirType: string): string => {
   const scaleMap: { [key: string]: string } = {
-    '大型': '大型水库大坝',
-    '中型': '中型水库大坝',
-    '小型': '小型水库大坝',
-    '大(一)型': '大(一)型水库大坝',
-    '大(二)型': '大(二)型水库大坝',
-    '小(一)型': '小(一)型水库大坝',
-    '小(二)型': '小(二)型水库大坝'
+    'large_type_1': '大型',
+    'large_type_2': '大型',
+    'middle_type': '中型',
+    'small_type_1': '小型',
+    'small_type_2': '小型',
+
   };
   return scaleMap[reservoirType] || '大型水库大坝';
 };

@@ -15,10 +15,10 @@
             <span class="label">设备编号:</span>
             <span class="value">{{ deviceData?.deviceCode || 'XXX' }}</span>
           </div>
-          <div class="info-item">
+          <!-- <div class="info-item">
             <span class="label">监测项目:</span>
             <span class="value">{{ deviceData?.monitorItem || 'XXX' }}</span>
-          </div>
+          </div> -->
           <div class="info-item">
             <span class="label">设备状态:</span>
             <span class="value">{{ deviceData?.status || 'XXX' }}</span>
@@ -85,22 +85,23 @@
                 <span class="label">所属区域:</span>
                 <span class="value">{{ deviceData?.basicInfo?.area || 'XXX' }}</span>
               </div>
-              <div class="info-field">
+              <!-- <div class="info-field">
                 <span class="label">设备厂商:</span>
                 <span class="value">{{ deviceData?.basicInfo?.manufacturer || 'XXX' }}</span>
               </div>
-              <div class="info-field">
-                <span class="label">设备型号:</span>
-                <span class="value">{{ deviceData?.basicInfo?.model || 'XXX' }}</span>
-              </div>
+           
               <div class="info-field">
                 <span class="label">负责人:</span>
                 <span class="value">{{ deviceData?.basicInfo?.personInCharge || 'XXX' }}</span>
+              </div>   -->
+               <div class="info-field">
+                <span class="label">设备型号:</span>
+                <span class="value">{{ deviceData?.basicInfo?.model || 'XXX' }}</span>
               </div>
-              <div class="info-field">
+              <!-- <div class="info-field">
                 <span class="label">联系电话:</span>
                 <span class="value">{{ deviceData?.basicInfo?.contact || 'XXX' }}</span>
-              </div>
+              </div> -->
               <div class="info-field">
                 <span class="label">经度:</span>
                 <span class="value">{{ deviceData?.basicInfo?.longitude || 'XXX' }}</span>
@@ -109,14 +110,14 @@
                 <span class="label">纬度:</span>
                 <span class="value">{{ deviceData?.basicInfo?.latitude || 'XXX' }}</span>
               </div>
-              <div class="info-field">
+              <!-- <div class="info-field">
                 <span class="label">高度:</span>
                 <span class="value">{{ deviceData?.basicInfo?.altitude || 'XXX' }}</span>
-              </div>
-              <div class="info-field full-width">
+              </div> -->
+              <!-- <div class="info-field full-width">
                 <span class="label">备注:</span>
                 <span class="value">{{ deviceData?.basicInfo?.remarks || 'XXXXXXXXXX' }}</span>
-              </div>
+              </div> -->
             </div>
           </div>
 
