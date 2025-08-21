@@ -6,69 +6,59 @@
         <div class="column-header">
           <span>闸门名称: {{ selectedGate ? selectedGate.gateName : '' }}</span>
           <!-- 添加闸门选择下拉框 -->
-          <el-select 
-            v-model="selectedGateId" 
-            placeholder="请选择闸门" 
-            style="width: 200px;"
-            :disabled="!gateList.length"
-            @change="handleGateChange"
-            :teleported="false"
-          >
-            <el-option 
-              v-for="item in gateList" 
-              :key="item.id" 
-              :label="item.gateName" 
-              :value="item.id"
-            ></el-option>
+          <el-select v-model="selectedGateId" placeholder="请选择闸门" style="width: 200px;" :disabled="!gateList.length"
+            @change="handleGateChange" :teleported="false">
+            <el-option v-for="item in gateList" :key="item.id" :label="item.gateName" :value="item.id"></el-option>
           </el-select>
         </div>
-          <div class="gate-internal-monitor">
-            <!-- Three.js 3D模型显示 -->
-            <ThreeModelViewer 
-              :model-path="'/glb/zhazhan.glb'"
-              width="100%"
-              height="400px"
-              @model-loaded="onModelLoaded"
-              @model-error="onModelError"
-              @load-progress="onLoadProgress"
-            />
-          </div>
-          <!-- 闸口选择 -->
-          <div class="gate-port-selection" style="margin: 20px 0;">
-            <el-form-item label="选择闸口:">
-              <el-select 
-                v-model="selectedGatePort" 
-                placeholder="请选择闸口" 
-                style="width: 200px;"
-                :teleported="false"
-                :disabled="!selectedGateId"
-                @change="handleGatePortChange"
-              >
-                <el-option 
-                  v-for="option in gatePortOptions" 
-                  :key="option.value" 
-                  :label="option.label" 
-                  :value="option.value"
-                ></el-option>
-              </el-select>
-            </el-form-item>
-          </div>
-          
-          <el-descriptions title="闸门情况" :column="2" border class="gate-status-info">
-             <el-descriptions-item label="当前开度">{{ currentGateInfo ? currentGateInfo.openingDegree : '0' }} %</el-descriptions-item>
-             <el-descriptions-item label="闸板高度">{{ currentGateInfo ? currentGateInfo.gateHeight : '0' }} 米</el-descriptions-item>
-             <el-descriptions-item label="闸门控制">
-               <el-tag :type="currentGateInfo && String(currentGateInfo.isHandle) === '0.0' ? 'success' : 'warning'">
-                 {{ currentGateInfo && String(currentGateInfo.isHandle) === '0.0' ? '自动可远程' : '手动' }}
-               </el-tag>
-             </el-descriptions-item>
-             <el-descriptions-item label="最新时间">{{ currentGateInfo ? currentGateInfo.crtTime : '--' }} </el-descriptions-item>
-           </el-descriptions>
-          <div class="gate-controls">
-            <el-button type="primary" @click="showConfirmationDialog('open')" :disabled="!selectedGateId || !selectedGatePort || (currentGateInfo && String(currentGateInfo.isHandle) === '1.0')">开闸</el-button>
-            <el-button type="danger" @click="showConfirmationDialog('close')" :disabled="!selectedGateId || !selectedGatePort || (currentGateInfo && String(currentGateInfo.isHandle) === '1.0')">关闸</el-button>
-            <el-button type="warning" @click="stopGate" :disabled="!selectedGateId || !selectedGatePort || (currentGateInfo && String(currentGateInfo.isHandle) === '1.0')">停闸</el-button>
-          </div>
+        <div class="gate-internal-monitor">
+          <!-- 闸门站图片显示 -->
+          <img src="/src/assets/images/GateStation.jpg" alt="闸门站" class="gate-station-image" />
+          <img 
+            src="/src/assets/images/Gate.png" 
+            alt="闸门口1" 
+            class="gate-image gate-1"
+            :style="{ '--gate1-position': `${gate1Position}%` }"
+          />
+          <img 
+            src="/src/assets/images/Gate.png" 
+            alt="闸门口2" 
+            class="gate-image gate-2"
+            :style="{ '--gate2-position': `${gate2Position}%` }"
+          />
+        </div>
+        <!-- 闸口选择 -->
+        <div class="gate-port-selection" style="margin: 20px 0;">
+          <el-form-item label="选择闸口:">
+            <el-select v-model="selectedGatePort" placeholder="请选择闸口" style="width: 200px;" :teleported="false"
+              :disabled="!selectedGateId" @change="handleGatePortChange">
+              <el-option v-for="option in gatePortOptions" :key="option.value" :label="option.label"
+                :value="option.value"></el-option>
+            </el-select>
+          </el-form-item>
+        </div>
+
+        <el-descriptions title="闸门情况" :column="2" border class="gate-status-info">
+          <el-descriptions-item label="闸板开度">{{ currentGateInfo ? currentGateInfo.openingDegree : '0' }}
+            %</el-descriptions-item>
+          <el-descriptions-item label="闸板高度">{{ currentGateInfo ? currentGateInfo.gateHeight : '0' }}
+            米</el-descriptions-item>
+          <el-descriptions-item label="闸门控制">
+            <el-tag :type="currentGateInfo && String(currentGateInfo.isHandle) === '0.0' ? 'success' : 'warning'">
+              {{ currentGateInfo && String(currentGateInfo.isHandle) === '0.0' ? '自动可远程' : '手动' }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="最新时间">{{ currentGateInfo ? currentGateInfo.crtTime : '--' }}
+          </el-descriptions-item>
+        </el-descriptions>
+        <div class="gate-controls">
+          <el-button type="primary" @click="showConfirmationDialog('open')"
+            :disabled="!selectedGateId || !selectedGatePort || (currentGateInfo && String(currentGateInfo.isHandle) === '1.0')">开闸</el-button>
+          <el-button type="danger" @click="showConfirmationDialog('close')"
+            :disabled="!selectedGateId || !selectedGatePort || (currentGateInfo && String(currentGateInfo.isHandle) === '1.0')">关闸</el-button>
+          <el-button type="warning" @click="stopGate"
+            :disabled="!selectedGateId || !selectedGatePort || (currentGateInfo && String(currentGateInfo.isHandle) === '1.0')">停闸</el-button>
+        </div>
       </el-col>
 
       <!-- Divider -->
@@ -81,20 +71,10 @@
         <div class="column-header">
           <span>实时视频</span>
           <!-- 摄像枪选择下拉框 -->
-          <el-select 
-            v-model="selectedCameraDevice" 
-            placeholder="请选择摄像枪" 
-            style="width: 200px;"
-            :disabled="!cameraDevices.length"
-            @change="handleCameraDeviceChange"
-            :teleported="false"
-          >
-            <el-option
-              v-for="device in cameraDevices"
-              :key="device.deviceCode"
-              :label="device.deviceName"
-              :value="device.deviceCode"
-            ></el-option>
+          <el-select v-model="selectedCameraDevice" placeholder="请选择摄像枪" style="width: 200px;"
+            :disabled="!cameraDevices.length" @change="handleCameraDeviceChange" :teleported="false">
+            <el-option v-for="device in cameraDevices" :key="device.deviceCode" :label="device.deviceName"
+              :value="device.deviceCode"></el-option>
           </el-select>
         </div>
         <div v-if="!selectedGateId" class="camera-tip">
@@ -103,71 +83,60 @@
         <div v-else-if="!cameraDevices.length" class="camera-tip">
           该闸门暂无摄像设备
         </div>
-          <div class="gate-external-monitor">
-            <!-- 视频播放区域 -->
-            <div class="video-display-area">
-              <video 
-                ref="videoElement"
-                class="video-player"
-                controls
-                muted
-                autoplay
-                style="width: 100%; height: 450px; background-color: #000;"
-              >
-                您的浏览器不支持视频播放
-              </video>
-              <div v-if="!videoUrl" class="video-placeholder">
-                <div style="text-align: center; color: #999;">
-                  <div style="font-size: 48px; margin-bottom: 10px;">📹</div>
-                  <div style="font-size: 16px;">请选择摄像枪查看视频</div>
-                </div>
-              </div>
-              <div class="video-status-overlay">
-                <span>连接状态: {{ connectionStatus }}</span>
-                <span v-if="connectTime">连接时间: {{ connectTime }}</span>
+        <div class="gate-external-monitor">
+          <!-- 视频播放区域 -->
+          <div class="video-display-area">
+            <video ref="videoElement" class="video-player" controls muted autoplay
+              style="width: 100%; height: 450px; background-color: #000;">
+              您的浏览器不支持视频播放
+            </video>
+            <div v-if="!videoUrl" class="video-placeholder">
+              <div style="text-align: center; color: #999;">
+                <div style="font-size: 48px; margin-bottom: 10px;">📹</div>
+                <div style="font-size: 16px;">请选择摄像枪查看视频</div>
               </div>
             </div>
-            <div style="text-align: left; margin-top: 5px;">
-              <el-tag type="success"><el-icon><CaretRight /></el-icon> 实时视频</el-tag>
+            <div class="video-status-overlay">
+              <!-- <span>连接状态: {{ connectionStatus }}</span> -->
+              <span v-if="connectTime">连接时间: {{ connectTime }}</span>
             </div>
           </div>
+          <div style="text-align: left; margin-top: 5px;">
+            <el-tag type="success"><el-icon>
+                <CaretRight />
+              </el-icon> 实时视频</el-tag>
+          </div>
+        </div>
 
-          <el-card shadow="never" style="margin-top: 20px;">
-            <template #header>
-              <div class="card-header">
-                <span>任务计划</span>
-                <el-button type="primary" @click="showAddTaskDialog">添加任务</el-button>
-              </div>
-            </template>
-            <el-table :data="taskList" style="width: 100%" height="200" v-loading="taskLoading">
-              <el-table-column type="index" label="序号" width="80" align="center"></el-table-column>
-              <el-table-column prop="taskType" label="任务类型" align="center">
-                <template #default="scope">
-                  {{ getTaskTypeLabel(scope.row.taskType) }}
-                </template>
-              </el-table-column>
-              <el-table-column prop="deviceCode" label="设备编号" align="center"></el-table-column>
-              <el-table-column prop="id" label="任务ID" align="center"></el-table-column>
-              <el-table-column label="操作" width="100" align="center">
-                <template #default="scope">
-                  <el-button type="danger" link @click="deleteTask(scope.row)">删除</el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-          </el-card>
+        <el-card shadow="never" style="margin-top: 20px;">
+          <template #header>
+            <div class="card-header">
+              <span>任务计划</span>
+              <el-button type="primary" @click="showAddTaskDialog">添加任务</el-button>
+            </div>
+          </template>
+          <el-table :data="taskList" style="width: 100%" height="200" v-loading="taskLoading">
+            <el-table-column type="index" label="序号" width="80" align="center"></el-table-column>
+            <el-table-column prop="taskType" label="任务类型" align="center">
+              <template #default="scope">
+                {{ getTaskTypeLabel(scope.row.taskType) }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="deviceCode" label="设备编号" align="center"></el-table-column>
+            <el-table-column prop="id" label="任务ID" align="center"></el-table-column>
+            <el-table-column label="操作" width="100" align="center">
+              <template #default="scope">
+                <el-button type="danger" link @click="deleteTask(scope.row)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-card>
       </el-col>
     </el-row>
 
     <!-- Confirmation Dialog -->
-    <el-dialog
-    :lockScroll="false"
-      v-model="dialogVisible"
-      :title="dialogTitle"
-      width="30%"
-      :close-on-click-modal="false"
-      :close-on-press-escape="false"
-
-    >
+    <el-dialog :lockScroll="false" v-model="dialogVisible" :title="dialogTitle" width="30%"
+      :close-on-click-modal="false" :close-on-press-escape="false">
       <div style="margin-bottom: 15px;">
         <p>为防止出现误操作，需要进行二次确认，请在下方输入正确的计算结果：</p>
         <p><strong v-html="mathProblem.question" style="font-size: 24px;"></strong></p>
@@ -182,26 +151,12 @@
     </el-dialog>
 
     <!-- 添加任务弹窗 -->
-    <el-dialog
-      title="添加任务"
-      v-model="showAddTaskDialogVisible"
-      width="400px"
-      :lock-scroll="false"
-    >
+    <el-dialog title="添加任务" v-model="showAddTaskDialogVisible" width="400px" :lock-scroll="false">
       <el-form :model="addTaskForm" label-width="100px">
         <el-form-item label="任务时间:">
-          <el-select 
-            v-model="addTaskForm.taskType" 
-            placeholder="请选择任务时间"
-            style="width: 100%;"
-            :teleported="false"
-          >
-            <el-option 
-              v-for="option in taskTypeOptions" 
-              :key="option.value" 
-              :label="option.label" 
-              :value="option.value"
-            ></el-option>
+          <el-select v-model="addTaskForm.taskType" placeholder="请选择任务时间" style="width: 100%;" :teleported="false">
+            <el-option v-for="option in taskTypeOptions" :key="option.value" :label="option.label"
+              :value="option.value"></el-option>
           </el-select>
         </el-form-item>
       </el-form>
@@ -214,41 +169,20 @@
     </el-dialog>
 
     <!-- 水泵数据弹窗 -->
-    <el-dialog
-      title="水泵数据"
-      v-model="showPumpDialog"
-      width="80%"
-      :lock-scroll="false"
-    >
+    <el-dialog title="水泵数据" v-model="showPumpDialog" width="80%" :lock-scroll="false">
       <!-- 搜索条件 -->
       <div class="pump-search-section">
         <el-form :inline="true" :model="pumpSearchForm" class="pump-search-form">
           <el-form-item label="水泵编码/水泵名称/水泵地址:">
-            <el-input 
-              v-model="pumpSearchForm.keyword" 
-              placeholder=""
-              style="width: 250px;"
-              clearable
-            />
+            <el-input v-model="pumpSearchForm.keyword" placeholder="" style="width: 250px;" clearable />
           </el-form-item>
           <el-form-item label="监测时间:">
-            <el-date-picker
-              v-model="pumpSearchForm.monitorTime"
-              type="date"
-              placeholder="请选择"
-              style="width: 180px;"
-              :teleported="false"
-              clearable
-            />
+            <el-date-picker v-model="pumpSearchForm.monitorTime" type="date" placeholder="请选择" style="width: 180px;"
+              :teleported="false" clearable />
           </el-form-item>
           <el-form-item label="水泵状态:">
-            <el-select 
-              v-model="pumpSearchForm.status" 
-              placeholder="全部"
-              style="width: 120px;"
-              :teleported="false"
-              clearable
-            >
+            <el-select v-model="pumpSearchForm.status" placeholder="全部" style="width: 120px;" :teleported="false"
+              clearable>
               <el-option label="全部" value=""></el-option>
               <el-option label="在线" value="online"></el-option>
               <el-option label="离线" value="offline"></el-option>
@@ -259,28 +193,21 @@
 
       <!-- 水泵数据表格 -->
       <div class="pump-table-section">
-        <el-table 
-          :data="pumpDataList" 
-          style="width: 100%"
-          v-loading="pumpLoading"
-           
-        >
+        <el-table :data="pumpDataList" style="width: 100%" v-loading="pumpLoading">
           <el-table-column type="index" width="80" label="序号" />
-          <el-table-column prop="monitorTime" label="监测时间"  />
-          <el-table-column prop="pumpCode" label="水泵编码"  />
-          <el-table-column prop="pumpName" label="水泵名称"  />
-          <el-table-column prop="pumpLocation" label="水泵地点"  />
-          <el-table-column prop="instantFlow" label="瞬时流量(m³/s)"  />
-          <el-table-column prop="totalFlow" label="累计流量(m³/s)"  />
-          <el-table-column prop="waterLevel" label="水位(m)"  />
-          <el-table-column prop="pressure" label="压力(kPa)"  />
-          <el-table-column prop="status" label="水泵状态" >
+          <el-table-column prop="monitorTime" label="监测时间" />
+          <el-table-column prop="pumpCode" label="水泵编码" />
+          <el-table-column prop="pumpName" label="水泵名称" />
+          <el-table-column prop="pumpLocation" label="水泵地点" />
+          <el-table-column prop="instantFlow" label="瞬时流量(m³/s)" />
+          <el-table-column prop="totalFlow" label="累计流量(m³/s)" />
+          <el-table-column prop="waterLevel" label="水位(m)" />
+          <el-table-column prop="pressure" label="压力(kPa)" />
+          <el-table-column prop="status" label="水泵状态">
             <template #default="scope">
               <span class="pump-status">
-                <span 
-                  class="status-dot"
-                  :style="{ backgroundColor: scope.row.status === 'online' ? '#52c41a' : '#ff4d4f' }"
-                ></span>
+                <span class="status-dot"
+                  :style="{ backgroundColor: scope.row.status === 'online' ? '#52c41a' : '#ff4d4f' }"></span>
                 {{ scope.row.status === 'online' ? '在线' : '离线' }}
               </span>
             </template>
@@ -297,6 +224,38 @@
   </div>
 </template>
 
+<style scoped lang="scss">
+.gate-internal-monitor {
+  position: relative;
+  width: 100%;
+  display: inline-block;
+  
+  .gate-station-image {
+    width: 90%;
+    height: 400px;
+    border-radius: 8px;
+    display: block;
+  }
+  
+  .gate-image {
+    position: absolute;
+    top: 77%;
+    width: 50px;
+    transition: transform 0.5s ease-in-out;
+    
+    &.gate-2 {
+      left: 36%;
+      transform: translateX(-50%) translateY(var(--gate2-position, -45%)); /* 水平居中 + 垂直移动 */
+    }
+    
+    &.gate-1 {
+      left: 54%;
+      transform: translateX(-50%) translateY(var(--gate1-position, -45%)); /* 水平居中 + 垂直移动 */
+    }
+  }
+}
+</style>
+
 <script setup>
 import { ref, watch, computed, reactive, onMounted, onBeforeUnmount } from 'vue';
 import { Picture, VideoCamera, CaretRight } from '@element-plus/icons-vue';
@@ -304,7 +263,7 @@ import { ElMessage, ElDialog, ElInput, ElButton, ElDivider } from 'element-plus'
 import { useStore } from '@/store/pinia';
 import { getGateByStationCode, getGateDetail, gateOnOrOff, getCameraDevicesByGateCode, sendDeviceCommandApi, getDeviceManagementInfo, getGateExtInfo, getGateTaskList, taskSend } from '@/api/reservoir';
 import flvjs from 'flv.js';
-import ThreeModelViewer from './controlComponents/ThreeModelViewer.vue';
+
 
 const store = useStore();
 
@@ -321,6 +280,10 @@ let gateExtInfoTimer = null;
 
 // 当前选中闸口的闸门信息
 const currentGateInfo = ref(null);
+
+// 闸门位置
+const gate1Position = ref(-45); // 闸门1位置（0%开度时为-45%）
+const gate2Position = ref(-45); // 闸门2位置（0%开度时为-45%）
 
 // 闸口选择
 const selectedGatePort = ref('');
@@ -362,6 +325,29 @@ const taskTypeOptions = ref([
 // 计算属性：获取当前选中的节点
 const selectedDamNode = computed(() => store.selectedDamNode);
 
+// 计算闸门位置
+const calculateGatePosition = (openingDegree) => {
+  // 0%开度时位置为-45%，100%开度时位置为-95%
+  // 计算公式：-45 + (openingDegree / 100) * (-95 - (-45))
+  return -45 + (openingDegree / 100) * (-50);
+};
+
+// 更新闸门位置
+const updateGatePositions = (extInfo) => {
+  if (!Array.isArray(extInfo)) return;
+  
+  // 找到对应的闸门信息并更新位置
+  extInfo.forEach(item => {
+    if (item.devpoint === 'IRDA.DEVICE.GATE.OPENING') {
+      // 闸门1
+      gate1Position.value = calculateGatePosition(item.openingDegree || 0);
+    } else if (item.devpoint === 'IRDA2.DEVICE.GATE.OPENING') {
+      // 闸门2
+      gate2Position.value = calculateGatePosition(item.openingDegree || 0);
+    }
+  });
+};
+
 // 根据选中的水库加载闸门管理数据
 const loadControlDataForReservoir = async (reservoirNode) => {
   console.log('Control页面: 为水库加载闸门管理数据', reservoirNode);
@@ -377,6 +363,15 @@ const loadControlDataForReservoir = async (reservoirNode) => {
         gateExtInfo.value = null;
         selectedGatePort.value = '';
         currentGateInfo.value = null;
+        
+        // 重置闸门位置
+        gate1Position.value = -45;
+        gate2Position.value = -45;
+        
+        // 获取闸门扩展信息以更新位置
+        if (reservoirNode.gateStationCode) {
+          await fetchGateExtendedInfo(reservoirNode.gateStationCode);
+        }
       } else {
         gateList.value = [];
         ElMessage.warning('未获取到闸门列表数据');
@@ -388,6 +383,9 @@ const loadControlDataForReservoir = async (reservoirNode) => {
     }
   } else {
     gateList.value = [];
+    // 重置闸门位置
+    gate1Position.value = -45;
+    gate2Position.value = -45;
   }
 };
 
@@ -402,7 +400,7 @@ const fetchGateExtendedInfo = async (gateStationCode) => {
       if (extInfo) {
         gateExtInfo.value = extInfo;
         console.log('获取到闸门扩展信息:', extInfo);
-        
+
         // 设置闸口选项
         if (Array.isArray(extInfo)) {
           const currentSelectedPort = selectedGatePort.value;
@@ -410,7 +408,10 @@ const fetchGateExtendedInfo = async (gateStationCode) => {
             label: item.devpoint.includes('IRDA2') ? '二号闸口' : '一号闸口',
             value: item.devpoint
           }));
-          
+
+          // 更新闸门位置
+          updateGatePositions(extInfo);
+
           // 如果当前有选中的闸口且在新的选项中存在，保持选中状态
           if (currentSelectedPort && gatePortOptions.value.some(option => option.value === currentSelectedPort)) {
             selectedGatePort.value = currentSelectedPort;
@@ -434,7 +435,7 @@ const startGateExtInfoTimer = (gateStationCode) => {
   if (gateExtInfoTimer) {
     clearInterval(gateExtInfoTimer);
   }
-  
+
   // 启动新的定时器，每10秒获取一次
   gateExtInfoTimer = setInterval(() => {
     fetchGateExtendedInfo(gateStationCode);
@@ -469,7 +470,7 @@ const handleGatePortChange = (selectedPort) => {
     currentGateInfo.value = null;
     return;
   }
-  
+
   // 根据选择的闸口找到对应的闸门信息
   const gateInfo = gateExtInfo.value.find(item => item.devpoint === selectedPort);
   if (gateInfo) {
@@ -490,13 +491,13 @@ const handleGateChange = async (gateId) => {
     cleanup();
     return;
   }
-  
+
   try {
     // 获取闸门详情
     const res = await getGateDetail({ id: gateId });
     if (res) {
       selectedGate.value = res;
-      
+
       // 获取摄像设备列表
       if (res.gateCode) {
         await fetchCameraDevices(res.gateCode);
@@ -546,19 +547,19 @@ const sendControlCommand = async (deviceCode) => {
         "releaseTime": 5
       }
     });
-    
+
     const result = await sendDeviceCommandApi(topic, payloadStr);
     console.log('发送控制命令结果:', result);
-    
+
     if (result === "发送取流命令成功！") {
       ElMessage.success('发送取流命令成功！');
       // 构建FLV视频流地址
       const flvUrl = `http://220.250.41.136:8866/live?url=rtmp://119.3.245.90/live/${deviceCode}`;
-      
+
       console.log('准备播放FLV流:', flvUrl);
       videoUrl.value = flvUrl;
       connectionStatus.value = '连接中...';
-      
+
       // 开始播放视频
       setTimeout(() => {
         initFLVPlayer(flvUrl);
@@ -575,21 +576,21 @@ const sendControlCommand = async (deviceCode) => {
 // 初始化FLV播放器
 const initFLVPlayer = (url) => {
   console.log('初始化FLV播放器:', url);
-  
+
   if (!videoElement.value) {
     console.error('视频元素未找到');
     return;
   }
-  
+
   if (!url) {
     console.error('视频URL为空');
     ElMessage.error('视频URL无效');
     return;
   }
-  
+
   // 清理现有播放器
   cleanup();
-  
+
   try {
     if (flvjs.isSupported()) {
       flvPlayer.value = flvjs.createPlayer({
@@ -605,40 +606,62 @@ const initFLVPlayer = (url) => {
         lazyLoadMaxDuration: 3 * 60,
         lazyLoadRecoverDuration: 30
       });
-      
+
       flvPlayer.value.attachMediaElement(videoElement.value);
-      
+
       // 监听播放器事件
       flvPlayer.value.on(flvjs.Events.LOADING_COMPLETE, () => {
         console.log('FLV加载完成');
         connectionStatus.value = '已连接';
       });
-      
+
       flvPlayer.value.on(flvjs.Events.MEDIA_INFO, (mediaInfo) => {
         console.log('媒体信息:', mediaInfo);
       });
-      
+
       flvPlayer.value.on(flvjs.Events.ERROR, (errorType, errorDetail, errorInfo) => {
         console.error('FLV播放错误:', errorType, errorDetail, errorInfo);
         connectionStatus.value = '连接失败';
-        
+
         let errorMessage = '视频播放失败';
+        let shouldReconnect = false;
+        
         if (errorType === 'MediaError') {
           if (errorDetail === 'FormatUnsupported') {
             errorMessage = '视频格式不支持，请检查视频流地址';
           } else if (errorDetail === 'NetworkError') {
-            errorMessage = '网络连接失败，请检查网络状态';
+            errorMessage = '网络连接失败，正在尝试重连...';
+            shouldReconnect = true;
           }
+        } else if (errorType === 'NetworkError') {
+          // 检测到网络错误，可能是自动断流
+          errorMessage = '视频流已断开，正在尝试重连...';
+          shouldReconnect = true;
         }
-        
-        ElMessage.error(errorMessage);
-        
-        // 清理播放器
-        cleanup();
+
+        if (shouldReconnect && selectedCameraDevice.value) {
+          console.log('检测到自动断流，尝试重连...');
+          ElMessage.warning('视频流已断开，正在尝试重连...');
+          
+          // 清理当前播放器
+          cleanup();
+          
+          // 延迟2秒后重新连接
+          setTimeout(() => {
+            if (selectedCameraDevice.value) {
+              console.log('重新发送控制命令:', selectedCameraDevice.value);
+              sendControlCommand(selectedCameraDevice.value);
+            }
+          }, 2000);
+        } else {
+          ElMessage.error(errorMessage);
+          // 清理播放器
+          cleanup();
+        }
       });
-      
+
       flvPlayer.value.load();
-      
+
       // 等待一段时间后开始播放
       setTimeout(() => {
         if (flvPlayer.value) {
@@ -647,9 +670,9 @@ const initFLVPlayer = (url) => {
           connectTime.value = new Date().toLocaleTimeString();
         }
       }, 1000);
-      
+
       videoUrl.value = url;
-      
+
     } else {
       console.error('浏览器不支持FLV播放');
       ElMessage.error('浏览器不支持FLV播放');
@@ -673,7 +696,7 @@ const cleanup = () => {
     }
     flvPlayer.value = null;
   }
-  
+
   videoUrl.value = '';
   isPlaying.value = false;
   connectionStatus.value = '未连接';
@@ -769,7 +792,7 @@ const showConfirmationDialog = (action) => {
     ElMessage.warning('请先选择闸门');
     return;
   }
-  
+
   currentAction.value = action;
   dialogTitle.value = action === 'open' ? '确认开闸' : '确认关闸';
   generateMathProblem();
@@ -809,7 +832,7 @@ const openGateLogic = async () => {
     ElMessage.error('缺少必要的控制参数');
     return;
   }
-  
+
   try {
     // 先执行停闸操作
     // console.log('开闸前先执行停闸操作...');
@@ -818,10 +841,10 @@ const openGateLogic = async () => {
     //   controlVal: '3' // 停止
     // };
     // await gateOnOrOff(controlDeviceCode.value, JSON.stringify(stopPayload));
-    
+
     // // 等待一段时间确保停闸操作完成
     // await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     // 执行开闸操作
     const openPayload = {
       devpoint: selectedGatePort.value,
@@ -843,7 +866,7 @@ const closeGateLogic = async () => {
     ElMessage.error('缺少必要的控制参数');
     return;
   }
-  
+
   try {
     // 先执行停闸操作
     // console.log('关闸前先执行停闸操作...');
@@ -852,10 +875,10 @@ const closeGateLogic = async () => {
     //   controlVal: '3' // 停止
     // };
     // await gateOnOrOff(controlDeviceCode.value, JSON.stringify(stopPayload));
-    
+
     // // 等待一段时间确保停闸操作完成
     // await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     // 执行关闸操作
     const closePayload = {
       devpoint: selectedGatePort.value,
@@ -876,12 +899,12 @@ const stopGate = async () => {
     ElMessage.warning('请先选择闸门');
     return;
   }
-  
+
   if (!controlDeviceCode.value || !selectedGatePort.value) {
     ElMessage.error('缺少必要的控制参数');
     return;
   }
-  
+
   try {
     const stopPayload = {
       devpoint: selectedGatePort.value,
@@ -924,11 +947,19 @@ const loadTaskList = async () => {
 
 // 监听选中节点变化
 watch(selectedDamNode, async (newNode, oldNode) => {
+  // 停止之前的定时器
+  stopGateExtInfoTimer();
+  
+  // 清空视频相关状态
+  cameraDevices.value = [];
+  selectedCameraDevice.value = '';
+  cleanup();
+  
   if (newNode) {
     console.log('Control页面: 检测到选中节点变化', newNode);
     // 在这里可以根据选中的水库重新加载闸门管理数据
     loadControlDataForReservoir(newNode);
-    
+
     // 获取设备管理信息和闸门扩展信息
     if (newNode.gateStationCode) {
       await fetchGateExtendedInfo(newNode.gateStationCode);
@@ -936,9 +967,21 @@ watch(selectedDamNode, async (newNode, oldNode) => {
       // 启动定时器
       startGateExtInfoTimer(newNode.gateStationCode);
     }
-    
+
     // 加载任务列表
     await loadTaskList();
+  } else {
+    // 清空数据
+    gateList.value = [];
+    selectedGateId.value = '';
+    selectedGate.value = null;
+    gateExtInfo.value = null;
+    selectedGatePort.value = '';
+    currentGateInfo.value = null;
+    taskList.value = [];
+    // 重置闸门位置
+    gate1Position.value = -45;
+    gate2Position.value = -45;
   }
 }, { immediate: true });
 
@@ -966,19 +1009,19 @@ const confirmAddTask = async () => {
     ElMessage.warning('请选择任务时间');
     return;
   }
-  
+
   if (!controlDeviceCode.value) {
     ElMessage.error('缺少设备编码，请先选择闸门');
     return;
   }
-  
+
   try {
     addTaskLoading.value = true;
     const payloadStr = JSON.stringify({
       tasksCode: addTaskForm.taskType,
       tasksEven: 'add'
     });
-    
+
     await taskSend(controlDeviceCode.value, payloadStr);
     ElMessage.success('添加任务成功');
     showAddTaskDialogVisible.value = false;
@@ -1000,7 +1043,7 @@ const deleteTask = async (task) => {
       tasksCode: task.taskType,
       tasksEven: 'delete'
     });
-    
+
     await taskSend(task.deviceCode, payloadStr);
     ElMessage.success('删除任务成功');
     // 重新加载任务列表
@@ -1015,7 +1058,7 @@ const viewPumpData = () => {
   console.log('查看水泵数据...');
   showPumpDialog.value = true;
   pumpLoading.value = true;
-  
+
   // 模拟加载数据
   setTimeout(() => {
     pumpLoading.value = false;
@@ -1049,7 +1092,7 @@ const closePumpDialog = () => {
 // 初始化加载
 onMounted(async () => {
   if (selectedDamNode.value) {
-    loadControlDataForReservoir(selectedDamNode.value);
+    await loadControlDataForReservoir(selectedDamNode.value);
     // 获取设备管理信息和闸门扩展信息
     if (selectedDamNode.value.gateStationCode) {
       await fetchGateExtendedInfo(selectedDamNode.value.gateStationCode);
@@ -1065,7 +1108,7 @@ onMounted(async () => {
 // 发送停止取流命令
 const sendStopStreamCommand = async (deviceCode) => {
   if (!deviceCode) return;
-  
+
   try {
     const topic = `YN/0000/769834/control/${deviceCode}`;
     const payloadStr = JSON.stringify({
@@ -1077,7 +1120,7 @@ const sendStopStreamCommand = async (deviceCode) => {
         "releaseTime": 5
       }
     });
-    
+
     const result = await sendDeviceCommandApi(topic, payloadStr);
     console.log('发送停止取流命令结果:', result);
   } catch (error) {
@@ -1090,12 +1133,12 @@ const sendStopStreamCommand = async (deviceCode) => {
 // 组件卸载时清理资源
 onBeforeUnmount(async () => {
   console.log('GateControl组件卸载，清理资源');
-  
+
   // 发送停止取流命令
   if (selectedCameraDevice.value) {
     await sendStopStreamCommand(selectedCameraDevice.value);
   }
-  
+
   cleanup();
   // 清除定时器
   stopGateExtInfoTimer();
@@ -1118,7 +1161,7 @@ onBeforeUnmount(async () => {
   flex-direction: column;
 }
 
-.gate-control-container > .el-row {
+.gate-control-container>.el-row {
   flex-grow: 1;
   align-items: stretch; // Make columns equal height
 }
@@ -1132,7 +1175,7 @@ onBeforeUnmount(async () => {
   border: 1px solid #ebeef5; // Mimic card border
 }
 
-.content-col > .el-card[shadow="never"] {
+.content-col>.el-card[shadow="never"] {
   border: none; // Remove border from inner cards if content-col has one
 }
 
@@ -1173,8 +1216,10 @@ onBeforeUnmount(async () => {
 
 .gate-internal-monitor,
 .gate-external-monitor {
+  position: relative;
   margin-bottom: 20px;
   text-align: center;
+  // width:100%;
   .image-slot {
     display: flex;
     justify-content: center;
@@ -1184,6 +1229,7 @@ onBeforeUnmount(async () => {
     background: var(--el-fill-color-light);
     color: var(--el-text-color-secondary);
     font-size: 30px;
+
     .el-icon {
       font-size: 30px;
       margin-right: 5px;
@@ -1198,7 +1244,9 @@ onBeforeUnmount(async () => {
 .gate-controls {
   text-align: center;
   // margin-top: auto; /* Push to bottom of flex column */
-  padding-top: 30px; /* Space above buttons */
+  padding-top: 30px;
+
+  /* Space above buttons */
   .el-button {
     margin: 0 10px;
   }

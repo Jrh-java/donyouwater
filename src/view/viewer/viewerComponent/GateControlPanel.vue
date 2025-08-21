@@ -17,7 +17,7 @@
         
         <!-- 闸门情况 -->
         <el-descriptions title="闸门情况" :column="2" border class="gate-status-info">
-          <el-descriptions-item label="当前开度">{{ currentGateInfo ? currentGateInfo.openingDegree : '0' }} %</el-descriptions-item>
+          <el-descriptions-item label="闸板开度">{{ currentGateInfo ? currentGateInfo.openingDegree : '0' }} %</el-descriptions-item>
           <el-descriptions-item label="闸板高度">{{ currentGateInfo ? currentGateInfo.gateHeight : '0' }} 米</el-descriptions-item>
           <el-descriptions-item label="闸门控制">
             <el-tag :type="currentGateInfo && String(currentGateInfo.isHandle) === '0.0' ? 'success' : 'warning'">

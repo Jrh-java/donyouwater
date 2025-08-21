@@ -56,7 +56,7 @@
               <p>{{ connectionStatus }}</p>
             </div>
             <div class="video-status-overlay" v-if="videoUrl">
-              <span>连接状态: {{ connectionStatus }}</span>
+              <!-- <span>连接状态: {{ connectionStatus }}</span> -->
               <span v-if="connectTime">连接时间: {{ connectTime }}</span>
             </div>
           </div>

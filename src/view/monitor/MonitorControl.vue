@@ -41,7 +41,7 @@
       </div>
       
       <div class="control-panel-section">
-        <p class="section-title">控制台</p>
+        <!-- <p class="section-title">控制台</p>
         <div class="control-buttons">
           <el-row justify="space-between" class="control-row">
             <el-button circle @click="controlCamera('up-left')" title="左上">↖</el-button>
@@ -62,7 +62,7 @@
              <el-button :icon="ZoomIn" @click="controlCamera('zoomIn')">放大</el-button>
              <el-button :icon="ZoomOut" @click="controlCamera('zoomOut')">缩小</el-button>
           </el-row>
-        </div>
+        </div> -->
       </div>
     </el-aside>
     <!-- <div class="video-area-header">
@@ -136,7 +136,7 @@
                 <p>请选择摄像枪查看视频,回放还需要选择时间范围</p>
               </div>
               <div class="video-status-overlay">
-                <span>连接状态: {{ connectionStatus }}</span>
+                <!-- <span>连接状态: {{ connectionStatus }}</span> -->
                 <span v-if="connectTime">连接时间: {{ connectTime }}</span>
               </div>
             </div>

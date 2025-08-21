@@ -24,7 +24,7 @@
           <el-select v-model="formInline.warnType" placeholder="请选择告警类型" clearable :teleported="false">
             <el-option label="位移监测" value="displacement" />
             <el-option label="应力监测" value="stress" />
-            <el-option label="环境监测" value="env" />
+            <!-- <el-option label="环境监测" value="env" /> -->
             <el-option label="渗压监测" value="seepage" />
             <el-option label="渗流监测" value="flow" />
           </el-select>
@@ -109,7 +109,7 @@
               <el-select v-model="formData.warnType" placeholder="请选择" :teleported="false">
                 <el-option label="位移监测" value="displacement" />
                 <el-option label="应力监测" value="stress" />
-                <el-option label="环境监测" value="env" />
+                <!-- <el-option label="环境监测" value="env" /> -->
                 <el-option label="渗压监测" value="seepage" />
                 <el-option label="渗流监测" value="flow" />
               </el-select>
@@ -119,7 +119,14 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="触发阈值" prop="warnValue">
-              <el-input v-model="formData.warnValue" placeholder="请输入..." />
+              <el-input v-model="formData.warnValue" placeholder="请输入...">
+                <template #append>
+                  <span v-if="formData.warnType === 'displacement'">mm</span>
+                  <span v-else-if="formData.warnType === 'seepage'">kPa</span>
+                  <span v-else-if="formData.warnType === 'stress'">MPa</span>
+                  <span v-else-if="formData.warnType === 'flow'">L/S</span>
+                </template>
+              </el-input>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -186,7 +193,30 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="接收者" prop="receiverCode">
-              <el-input v-model="formData.receiverCode" placeholder="请输入..." />
+              <el-select 
+                v-model="formData.receiverCode" 
+                placeholder="请选择接收者" 
+                :teleported="false"
+                :loading="userRoleLoading"
+                filterable
+                clearable
+                @focus="handleReceiverFocus"
+              >
+                <el-option 
+                  v-if="formData.receiveType === 'U'"
+                  v-for="user in userList" 
+                  :key="user.userId" 
+                  :label="user.name" 
+                  :value="user.name" 
+                />
+                <el-option 
+                  v-if="formData.receiveType === 'R'"
+                  v-for="role in roleList" 
+                  :key="role.id" 
+                  :label="role.roleName" 
+                  :value="role.roleName" 
+                />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
@@ -227,15 +257,21 @@
     >
       <el-descriptions :column="2" border>
         <el-descriptions-item label="规则名称" align="center">{{ viewData.ruleName }}</el-descriptions-item>
-        <el-descriptions-item label="告警类型" align="center">{{ getWarnTypeText(viewData.warnType) }}</el-descriptions-item>
-        <el-descriptions-item label="触发阈值" align="center">{{ viewData.warnValue }}</el-descriptions-item>
-        <el-descriptions-item label="告警级别" align="center">{{ getWarnLevelText(viewData.warnLevel) }}</el-descriptions-item>
+        <el-descriptions-item label="告警类型" align="center">{{ getWarnTypeText(viewData.warnType || '') }}</el-descriptions-item>
+        <el-descriptions-item label="触发阈值" align="center">
+          {{ viewData.warnValue }}
+          <span v-if="viewData.warnType === 'displacement'">mm</span>
+          <span v-else-if="viewData.warnType === 'seepage'">kPa</span>
+          <span v-else-if="viewData.warnType === 'stress'">MPa</span>
+          <span v-else-if="viewData.warnType === 'flow'">L/S</span>
+        </el-descriptions-item>
+        <el-descriptions-item label="告警级别" align="center">{{ getWarnLevelText(viewData.warnLevel || '') }}</el-descriptions-item>
         <el-descriptions-item label="规则描述" :span="2" align="center">{{ viewData.reamrks }}</el-descriptions-item>
         <el-descriptions-item label="所属流域" align="center">{{ getReservoirLabel(viewData.reservoirManagementId || '') }}</el-descriptions-item>
         <el-descriptions-item label="所属闸站" align="center">{{ getGateStationLabel(viewData.gateStationId || '') }}</el-descriptions-item>
         <el-descriptions-item label="接收者类型" align="center">{{ viewData.receiveType === 'U' ? '用户' : '角色' }}</el-descriptions-item>
-        <el-descriptions-item label="接收者" align="center">{{ viewData.receiverCode }}</el-descriptions-item>
-        <el-descriptions-item label="通知方式" align="center">{{ getNotifyTypeText(viewData.notifyType) }}</el-descriptions-item>
+        <el-descriptions-item label="接收者" align="center">{{ viewData.receiverCode || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="通知方式" align="center">{{ getNotifyTypeText(viewData.notifyType || '') }}</el-descriptions-item>
         <el-descriptions-item label="是否启用" align="center">{{ viewData.isActive === 'T' ? '是' : '否' }}</el-descriptions-item>
       </el-descriptions>
     </el-dialog>
@@ -243,7 +279,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
 import { 
@@ -255,6 +291,8 @@ import {
   type AlertRule 
 } from '@/api/alert';
 import { getDamDirectoryListApi } from '@/api/reservoir';
+import { getEmployeePage, type Employee } from '@/api/employee';
+import { getAllRole, type Role } from '@/api/role';
 
 const formInline = reactive({
   ruleName: '',
@@ -276,6 +314,11 @@ const damDataLoading = ref(false);
 // 用于存储code到name的映射
 const reservoirCodeMap = ref<Map<string, string>>(new Map());
 const gateStationCodeMap = ref<Map<string, string>>(new Map());
+
+// 用户和角色数据
+const userList = ref<Employee[]>([]);
+const roleList = ref<Role[]>([]);
+const userRoleLoading = ref(false);
 
 // 弹窗相关
 const dialogVisible = ref(false);
@@ -389,6 +432,46 @@ const findNodeInTree = (tree: any[], value: string): any => {
     }
   }
   return null;
+};
+
+// 获取用户数据
+const fetchUserData = async () => {
+  try {
+    userRoleLoading.value = true;
+    const response = await getEmployeePage({
+      page: 1,
+      limit: 1000
+    });
+    userList.value = response.list || [];
+  } catch (error) {
+    console.error('获取用户数据失败:', error);
+    ElMessage.error('获取用户数据失败');
+  } finally {
+    userRoleLoading.value = false;
+  }
+};
+
+// 获取角色数据
+const fetchRoleData = async () => {
+  try {
+    userRoleLoading.value = true;
+    const response = await getAllRole();
+    roleList.value = response || [];
+  } catch (error) {
+    console.error('获取角色数据失败:', error);
+    ElMessage.error('获取角色数据失败');
+  } finally {
+    userRoleLoading.value = false;
+  }
+};
+
+// 处理接收者下拉框焦点事件
+const handleReceiverFocus = () => {
+  if (formData.receiveType === 'U' && userList.value.length === 0) {
+    fetchUserData();
+  } else if (formData.receiveType === 'R' && roleList.value.length === 0) {
+    fetchRoleData();
+  }
 };
 
 // 获取流域数据（树形结构到水库级别）
@@ -610,7 +693,7 @@ const onAdd = () => {
 // 查看
 const handleView = async (row: AlertRule) => {
   try {
-    const result = await getAlertRuleDetail(row.id!);
+    const result = await getAlertRuleDetail(String(row.id || ''));
     // 处理数据映射：将code字段映射到对应的字段
     const mappedResult = {
       ...result,
@@ -627,7 +710,7 @@ const handleView = async (row: AlertRule) => {
 // 编辑
 const handleEdit = async (row: AlertRule) => {
   try {
-    const result = await getAlertRuleDetail(row.id!);
+    const result = await getAlertRuleDetail(String(row.id || ''));
     // 处理数据映射：将code字段映射到对应的字段
     const mappedResult = {
       ...result,
@@ -656,7 +739,7 @@ const handleDelete = (row: AlertRule) => {
     }
   ).then(async () => {
     try {
-      await deleteAlertRule([row.id!]);
+      await deleteAlertRule([String(row.id || '')]);
       ElMessage.success('删除成功');
       loadData();
     } catch (error) {
@@ -727,11 +810,25 @@ const handleCurrentChange = (val: number) => {
   loadData();
 };
 
+// 监听接收者类型变化
+watch(() => formData.receiveType, (newType) => {
+  // 清空接收者选择
+  formData.receiverCode = '';
+  // 根据类型预加载数据
+  if (newType === 'U' && userList.value.length === 0) {
+    fetchUserData();
+  } else if (newType === 'R' && roleList.value.length === 0) {
+    fetchRoleData();
+  }
+});
+
 // 初始化
 onMounted(() => {
   loadData();
   fetchReservoirData();
   fetchGateStationData();
+  // 预加载角色数据
+  fetchRoleData();
 });
 </script>
 

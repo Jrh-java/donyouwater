@@ -755,7 +755,7 @@ const handleGateAnimation = (animationData) => {
     console.log('停止闸门动画，闸门ID:', gateId);
   } else {
     // 开闸或关闸操作：执行动画
-    animateZhamenHeight(viewer, gateId, isOpening);
+    animateZhamenHeight(viewer, isOpening, gateId);
     console.log('执行闸门动画，开闸:', isOpening, '闸门ID:', gateId);
   }
 };

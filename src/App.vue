@@ -17,7 +17,8 @@ onMounted(() => {
     {
       el: "#inspectionViewerMap", //必填//有使用地图的情况一定要传地图的dom,不然会有很多问题 --eggsy
 
-    }
+    },
+ 
     ]
 })
 })

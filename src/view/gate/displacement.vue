@@ -69,7 +69,7 @@
           <div class="indicator-content">
             <img src="@/assets/icons/measurement.png" alt="今日最大位移量" class="indicator-icon" />
             <div class="indicator-text">
-              <div class="indicator-title">今日最大位移量 (m)</div>
+              <div class="indicator-title">今日最大位移量 (mm)</div>
               <div class="indicator-value">{{ indicatorData.maxDisplaceValue }}</div>
             </div>
           </div>
