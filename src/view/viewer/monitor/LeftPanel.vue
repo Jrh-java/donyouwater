@@ -272,7 +272,7 @@ onMounted(async () => {
   left: 20px;
   z-index: 100;
   padding: 8px 12px 12px 12px;
-  overflow-y: auto;
+  overflow-y: hidden;
   display: flex;
   flex-direction: column;
 }
