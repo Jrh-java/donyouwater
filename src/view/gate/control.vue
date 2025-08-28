@@ -4,45 +4,51 @@
       <!-- Left Side -->
       <el-col :span="10" class="content-col">
         <div class="column-header">
-          <span>闸门名称: {{ selectedGate ? selectedGate.gateName : '' }}</span>
-          <!-- 添加闸门选择下拉框 -->
-          <el-select v-model="selectedGateId" placeholder="请选择闸门" style="width: 200px;" :disabled="!gateList.length"
-            @change="handleGateChange" :teleported="false">
-            <el-option v-for="item in gateList" :key="item.id" :label="item.gateName" :value="item.id"></el-option>
-          </el-select>
+          <span>闸门控制</span>
         </div>
         <div class="gate-internal-monitor">
+          <div class="gate-controls">
+            <el-button type="primary" @click="showConfirmationDialog('open')"
+              :disabled="!gateExtInfo || !Array.isArray(gateExtInfo) || gateExtInfo.length === 0 || (gateExtInfo.some(info => String(info.isHandle) === '1.0'))">一键开闸</el-button>
+            <el-button type="danger" @click="showConfirmationDialog('close')"
+              :disabled="!gateExtInfo || !Array.isArray(gateExtInfo) || gateExtInfo.length === 0 || (gateExtInfo.some(info => String(info.isHandle) === '1.0'))">一键关闸</el-button>
+
+          </div>
+          <!-- 闸门信息显示 -->
+          <div class="gate-info-overlay">
+            <!-- 一号闸口信息（右侧） -->
+            <div class="gate-info gate-info-1">
+              <div class="gate-info-title">一号闸口</div>
+              <div class="gate-info-item">
+                <span class="info-label">开度:</span>
+                <span class="info-value">{{ gate1Info ? gate1Info.openingDegree : '0' }}%</span>
+              </div>
+              <div class="gate-info-item">
+                <span class="info-label">高度:</span>
+                <span class="info-value">{{ gate1Info ? gate1Info.gateHeight : '0' }}米</span>
+              </div>
+            </div>
+            <!-- 二号闸口信息（左侧） -->
+            <div class="gate-info gate-info-2">
+              <div class="gate-info-title">二号闸口</div>
+              <div class="gate-info-item">
+                <span class="info-label">开度:</span>
+                <span class="info-value">{{ gate2Info ? gate2Info.openingDegree : '0' }}%</span>
+              </div>
+              <div class="gate-info-item">
+                <span class="info-label">高度:</span>
+                <span class="info-value">{{ gate2Info ? gate2Info.gateHeight : '0' }}米</span>
+              </div>
+            </div>
+          </div>
           <!-- 闸门站图片显示 -->
           <img src="/src/assets/images/GateStation.jpg" alt="闸门站" class="gate-station-image" />
-          <img 
-            src="/src/assets/images/Gate.png" 
-            alt="闸门口1" 
-            class="gate-image gate-1"
-            :style="{ '--gate1-position': `${gate1Position}%` }"
-          />
-          <img 
-            src="/src/assets/images/Gate.png" 
-            alt="闸门口2" 
-            class="gate-image gate-2"
-            :style="{ '--gate2-position': `${gate2Position}%` }"
-          />
+          <img src="/src/assets/images/Gate.png" alt="闸门口1" class="gate-image gate-1"
+            :style="{ '--gate1-position': `${gate1Position}%` }" />
+          <img src="/src/assets/images/Gate.png" alt="闸门口2" class="gate-image gate-2"
+            :style="{ '--gate2-position': `${gate2Position}%` }" />
         </div>
-        <!-- 闸口选择 -->
-        <div class="gate-port-selection" style="margin: 20px 0;">
-          <el-form-item label="选择闸口:">
-            <el-select v-model="selectedGatePort" placeholder="请选择闸口" style="width: 200px;" :teleported="false"
-              :disabled="!selectedGateId" @change="handleGatePortChange">
-              <el-option v-for="option in gatePortOptions" :key="option.value" :label="option.label"
-                :value="option.value"></el-option>
-            </el-select>
-          </el-form-item>
-        </div>
-
         <el-descriptions title="闸门情况" :column="2" border class="gate-status-info">
-          <el-descriptions-item label="闸板开度">{{ currentGateInfo ? currentGateInfo.openingDegree : '0' }}
-            %</el-descriptions-item>
-          <el-descriptions-item label="闸板高度">{{ currentGateInfo ? currentGateInfo.gateHeight : '0' }}
-            米</el-descriptions-item>
           <el-descriptions-item label="闸门控制">
             <el-tag :type="currentGateInfo && String(currentGateInfo.isHandle) === '0.0' ? 'success' : 'warning'">
               {{ currentGateInfo && String(currentGateInfo.isHandle) === '0.0' ? '自动可远程' : '手动' }}
@@ -50,15 +56,45 @@
           </el-descriptions-item>
           <el-descriptions-item label="最新时间">{{ currentGateInfo ? currentGateInfo.crtTime : '--' }}
           </el-descriptions-item>
+          <el-descriptions-item label="河道液位">{{ gateExtInfo && gateExtInfo.length > 0 ? gateExtInfo[0].riverLevel : '--'
+            }}米
+          </el-descriptions-item>
+          <el-descriptions-item label="渠道液位">{{ gateExtInfo && gateExtInfo.length > 0 ? gateExtInfo[0].channelLevel :
+            '--' }}米
+          </el-descriptions-item>
         </el-descriptions>
-        <div class="gate-controls">
-          <el-button type="primary" @click="showConfirmationDialog('open')"
-            :disabled="!selectedGateId || !selectedGatePort || (currentGateInfo && String(currentGateInfo.isHandle) === '1.0')">开闸</el-button>
-          <el-button type="danger" @click="showConfirmationDialog('close')"
-            :disabled="!selectedGateId || !selectedGatePort || (currentGateInfo && String(currentGateInfo.isHandle) === '1.0')">关闸</el-button>
-          <el-button type="warning" @click="stopGate"
-            :disabled="!selectedGateId || !selectedGatePort || (currentGateInfo && String(currentGateInfo.isHandle) === '1.0')">停闸</el-button>
+        <!-- 闸口选择 -->
+        <div class="gate-port-selection" style="margin: 20px 0;">
+          <el-form-item label="选择闸口:" style="font-size: 16px;">
+            <el-select v-model="selectedGatePort" placeholder="请选择闸口" style="width: 200px;" :teleported="false"
+              @change="handleGatePortChange">
+              <el-option v-for="option in gatePortOptions" :key="option.value" :label="option.label"
+                :value="option.value"></el-option>
+            </el-select>
+          </el-form-item>
         </div>
+
+        <!-- 闸口开度控制 -->
+        <div class="gate-opening-control" style="margin: 20px 0; text-align: left;">
+          <el-form :inline="true" :model="gateOpeningForm">
+            <el-form-item label="闸口开度:" style="font-size: 16px;">
+              <el-input-number v-model="gateOpeningForm.openingValue" :min="0" :max="100" :step="2" placeholder="请输入开度"
+                style="width: 200px;" :disabled="!selectedGatePort" />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" @click="showConfirmationDialog('opening')"
+                :disabled="!selectedGatePort || (currentGateInfo && String(currentGateInfo.isHandle) === '1.0') || gateOpeningForm.openingValue === null || gateOpeningForm.openingValue === undefined"
+                :loading="gateOpeningLoading">
+                执行
+              </el-button>
+              <el-button type="warning" @click="stopGate"
+                :disabled="!selectedGatePort || (currentGateInfo && String(currentGateInfo.isHandle) === '1.0')">停闸</el-button>
+            </el-form-item>
+          </el-form>
+        </div>
+
+
+
       </el-col>
 
       <!-- Divider -->
@@ -77,12 +113,9 @@
               :value="device.deviceCode"></el-option>
           </el-select>
         </div>
-        <div v-if="!selectedGateId" class="camera-tip">
-          请先选择闸门
-        </div>
-        <div v-else-if="!cameraDevices.length" class="camera-tip">
-          该闸门暂无摄像设备
-        </div>
+        <!-- <div v-if="!cameraDevices.length" class="camera-tip">
+          暂无摄像设备
+        </div> -->
         <div class="gate-external-monitor">
           <!-- 视频播放区域 -->
           <div class="video-display-area">
@@ -229,28 +262,85 @@
   position: relative;
   width: 100%;
   display: inline-block;
-  
+
+  .gate-info-overlay {
+    position: absolute;
+    top: 25px;
+    left: 0;
+    right: 45px;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    padding: 0 5%;
+    gap: 20px;
+
+    .gate-info {
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 8px;
+      padding: 12px 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      min-width: 120px;
+
+      .gate-info-title {
+        font-weight: bold;
+        font-size: 14px;
+        color: #333;
+        margin-bottom: 8px;
+        text-align: center;
+        border-bottom: 1px solid #e0e0e0;
+        padding-bottom: 4px;
+      }
+
+      .gate-info-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 4px;
+        font-size: 14px;
+
+        .info-label {
+          color: #666;
+          margin-right: 8px;
+        }
+
+        .info-value {
+          color: #409eff;
+          font-weight: 500;
+        }
+      }
+    }
+
+    .gate-info-1 {
+      order: 2; // 一号闸口显示在右侧
+    }
+
+    .gate-info-2 {
+      order: 1; // 二号闸口显示在左侧
+    }
+  }
+
   .gate-station-image {
     width: 90%;
     height: 400px;
     border-radius: 8px;
     display: block;
   }
-  
+
   .gate-image {
     position: absolute;
     top: 77%;
     width: 50px;
     transition: transform 0.5s ease-in-out;
-    
+
     &.gate-2 {
       left: 36%;
-      transform: translateX(-50%) translateY(var(--gate2-position, -45%)); /* 水平居中 + 垂直移动 */
+      transform: translateX(-50%) translateY(var(--gate2-position, -45%));
+      /* 水平居中 + 垂直移动 */
     }
-    
+
     &.gate-1 {
       left: 54%;
-      transform: translateX(-50%) translateY(var(--gate1-position, -45%)); /* 水平居中 + 垂直移动 */
+      transform: translateX(-50%) translateY(var(--gate1-position, -45%));
+      /* 水平居中 + 垂直移动 */
     }
   }
 }
@@ -261,16 +351,13 @@ import { ref, watch, computed, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { Picture, VideoCamera, CaretRight } from '@element-plus/icons-vue';
 import { ElMessage, ElDialog, ElInput, ElButton, ElDivider } from 'element-plus';
 import { useStore } from '@/store/pinia';
-import { getGateByStationCode, getGateDetail, gateOnOrOff, getCameraDevicesByGateCode, sendDeviceCommandApi, getDeviceManagementInfo, getGateExtInfo, getGateTaskList, taskSend } from '@/api/reservoir';
+import { gateOnOrOff, getMonitorDevicesByGateStationCodeApi, sendDeviceCommandApi, getDeviceManagementInfo, getGateExtInfo, getGateTaskList, taskSend, setGateOpeningRate } from '@/api/reservoir';
 import flvjs from 'flv.js';
 
 
 const store = useStore();
 
-// 闸门列表和选中的闸门
-const gateList = ref([]);
-const selectedGateId = ref('');
-const selectedGate = ref(null);
+// 闸门相关变量已移除，直接使用gateStationCode
 
 // 闸门扩展信息
 const gateExtInfo = ref(null);
@@ -322,8 +409,26 @@ const taskTypeOptions = ref([
   { value: 'TIMING_GATE_2_PM_5_9', label: '下午 5点到 9点闸门#2' }
 ]);
 
+// 闸口开度控制相关
+const gateOpeningForm = reactive({
+  openingValue: null
+});
+const gateOpeningLoading = ref(false);
+
 // 计算属性：获取当前选中的节点
 const selectedDamNode = computed(() => store.selectedDamNode);
+
+// 计算属性：获取一号闸口信息
+const gate1Info = computed(() => {
+  if (!gateExtInfo.value || !Array.isArray(gateExtInfo.value)) return null;
+  return gateExtInfo.value.find(item => item.devpoint === 'IRDA.DEVICE.GATE.OPENING');
+});
+
+// 计算属性：获取二号闸口信息
+const gate2Info = computed(() => {
+  if (!gateExtInfo.value || !Array.isArray(gateExtInfo.value)) return null;
+  return gateExtInfo.value.find(item => item.devpoint === 'IRDA2.DEVICE.GATE.OPENING');
+});
 
 // 计算闸门位置
 const calculateGatePosition = (openingDegree) => {
@@ -335,7 +440,7 @@ const calculateGatePosition = (openingDegree) => {
 // 更新闸门位置
 const updateGatePositions = (extInfo) => {
   if (!Array.isArray(extInfo)) return;
-  
+
   // 找到对应的闸门信息并更新位置
   extInfo.forEach(item => {
     if (item.devpoint === 'IRDA.DEVICE.GATE.OPENING') {
@@ -348,46 +453,7 @@ const updateGatePositions = (extInfo) => {
   });
 };
 
-// 根据选中的水库加载闸门管理数据
-const loadControlDataForReservoir = async (reservoirNode) => {
-  console.log('Control页面: 为水库加载闸门管理数据', reservoirNode);
-  if (reservoirNode && reservoirNode.gateStationCode) {
-    try {
-      // 获取闸门列表
-      const res = await getGateByStationCode({ id: reservoirNode.gateStationCode });
-      if (res && Array.isArray(res)) {
-        gateList.value = res;
-        // 重置选中的闸门
-        selectedGateId.value = '';
-        selectedGate.value = null;
-        gateExtInfo.value = null;
-        selectedGatePort.value = '';
-        currentGateInfo.value = null;
-        
-        // 重置闸门位置
-        gate1Position.value = -45;
-        gate2Position.value = -45;
-        
-        // 获取闸门扩展信息以更新位置
-        if (reservoirNode.gateStationCode) {
-          await fetchGateExtendedInfo(reservoirNode.gateStationCode);
-        }
-      } else {
-        gateList.value = [];
-        ElMessage.warning('未获取到闸门列表数据');
-      }
-    } catch (error) {
-      console.error('获取闸门列表失败:', error);
-      ElMessage.error('获取闸门列表失败');
-      gateList.value = [];
-    }
-  } else {
-    gateList.value = [];
-    // 重置闸门位置
-    gate1Position.value = -45;
-    gate2Position.value = -45;
-  }
-};
+// loadControlDataForReservoir函数已删除，不再需要获取闸门列表
 
 // 获取闸门扩展信息
 const fetchGateExtendedInfo = async (gateStationCode) => {
@@ -439,7 +505,7 @@ const startGateExtInfoTimer = (gateStationCode) => {
   // 启动新的定时器，每10秒获取一次
   gateExtInfoTimer = setInterval(() => {
     fetchGateExtendedInfo(gateStationCode);
-  }, 10000);
+  }, 4000);
 };
 
 // 停止闸门扩展信息定时器
@@ -482,39 +548,12 @@ const handleGatePortChange = (selectedPort) => {
   }
 };
 
-// 处理闸门选择变化
-const handleGateChange = async (gateId) => {
-  if (!gateId) {
-    selectedGate.value = null;
-    cameraDevices.value = [];
-    selectedCameraDevice.value = '';
-    cleanup();
-    return;
-  }
-
-  try {
-    // 获取闸门详情
-    const res = await getGateDetail({ id: gateId });
-    if (res) {
-      selectedGate.value = res;
-
-      // 获取摄像设备列表
-      if (res.gateCode) {
-        await fetchCameraDevices(res.gateCode);
-      }
-    } else {
-      ElMessage.warning('未获取到闸门详情');
-    }
-  } catch (error) {
-    console.error('获取闸门详情失败:', error);
-    ElMessage.error('获取闸门详情失败');
-  }
-};
+// handleGateChange函数已删除，不再需要闸门选择功能
 
 // 获取摄像设备列表
-const fetchCameraDevices = async (gateCode) => {
+const fetchCameraDevices = async (gateStationCode) => {
   try {
-    const devices = await getCameraDevicesByGateCode({ id: gateCode });
+    const devices = await getMonitorDevicesByGateStationCodeApi(gateStationCode);
     cameraDevices.value = devices || [];
     selectedCameraDevice.value = '';
     cleanup();
@@ -625,7 +664,7 @@ const initFLVPlayer = (url) => {
 
         let errorMessage = '视频播放失败';
         let shouldReconnect = false;
-        
+
         if (errorType === 'MediaError') {
           if (errorDetail === 'FormatUnsupported') {
             errorMessage = '视频格式不支持，请检查视频流地址';
@@ -642,10 +681,10 @@ const initFLVPlayer = (url) => {
         if (shouldReconnect && selectedCameraDevice.value) {
           console.log('检测到自动断流，尝试重连...');
           ElMessage.warning('视频流已断开，正在尝试重连...');
-          
+
           // 清理当前播放器
           cleanup();
-          
+
           // 延迟2秒后重新连接
           setTimeout(() => {
             if (selectedCameraDevice.value) {
@@ -788,13 +827,14 @@ const generateMathProblem = () => {
 };
 
 const showConfirmationDialog = (action) => {
-  if (!selectedGateId.value) {
-    ElMessage.warning('请先选择闸门');
-    return;
-  }
-
   currentAction.value = action;
-  dialogTitle.value = action === 'open' ? '确认开闸' : '确认关闸';
+  if (action === 'open') {
+    dialogTitle.value = '确认开闸';
+  } else if (action === 'close') {
+    dialogTitle.value = '确认关闸';
+  } else if (action === 'opening') {
+    dialogTitle.value = '闸口开度控制确认';
+  }
   generateMathProblem();
   userAnswer.value = ''; // Clear previous answer
   dialogVisible.value = true;
@@ -811,6 +851,8 @@ const handleConfirm = () => {
       openGateLogic();
     } else if (currentAction.value === 'close') {
       closeGateLogic();
+    } else if (currentAction.value === 'opening') {
+      executeGateOpening();
     }
     // 成功消息已在各自的逻辑函数中处理
   } else {
@@ -827,70 +869,103 @@ const handleCancel = () => {
 };
 
 const openGateLogic = async () => {
-  console.log('执行开闸逻辑...');
-  if (!controlDeviceCode.value || !selectedGatePort.value) {
+  console.log('执行全部开闸逻辑...');
+  if (!controlDeviceCode.value) {
     ElMessage.error('缺少必要的控制参数');
     return;
   }
 
+  if (!gateExtInfo.value || !Array.isArray(gateExtInfo.value)) {
+    ElMessage.error('未获取到闸门信息');
+    return;
+  }
+
   try {
-    // 先执行停闸操作
-    // console.log('开闸前先执行停闸操作...');
-    // const stopPayload = {
-    //   devpoint: selectedGatePort.value,
-    //   controlVal: '3' // 停止
-    // };
-    // await gateOnOrOff(controlDeviceCode.value, JSON.stringify(stopPayload));
+    // 获取所有闸口信息
+    const gate1Info = gateExtInfo.value.find(item => item.devpoint === 'IRDA.DEVICE.GATE.OPENING');
+    const gate2Info = gateExtInfo.value.find(item => item.devpoint === 'IRDA2.DEVICE.GATE.OPENING');
 
-    // // 等待一段时间确保停闸操作完成
-    // await new Promise(resolve => setTimeout(resolve, 1000));
+    // 先开一号闸口
+    if (gate1Info) {
+      console.log('开启一号闸口...');
+      const openPayload1 = {
+        devpoint: gate1Info.devpoint,
+        controlVal: '1' // 开阀
+      };
+      await gateOnOrOff(controlDeviceCode.value, JSON.stringify(openPayload1));
+      console.log('一号闸口开启成功');
+    }
 
-    // 执行开闸操作
-    const openPayload = {
-      devpoint: selectedGatePort.value,
-      controlVal: '1' // 开阀
-    };
-    await gateOnOrOff(controlDeviceCode.value, JSON.stringify(openPayload));
-    ElMessage.success('开闸操作成功');
+    // 等待1秒
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // 再开二号闸口
+    if (gate2Info) {
+      console.log('开启二号闸口...');
+      const openPayload2 = {
+        devpoint: gate2Info.devpoint,
+        controlVal: '1' // 开阀
+      };
+      await gateOnOrOff(controlDeviceCode.value, JSON.stringify(openPayload2));
+      console.log('二号闸口开启成功');
+    }
+
+    ElMessage.success('全部开闸操作成功');
     // 更新闸门状态
     await refreshGateStatus();
   } catch (error) {
-    console.error('开闸操作失败:', error);
-    ElMessage.error('开闸操作失败');
+    console.error('全部开闸操作失败:', error);
+    ElMessage.error('全部开闸操作失败');
   }
 };
 
 const closeGateLogic = async () => {
-  console.log('执行关闸逻辑...');
-  if (!controlDeviceCode.value || !selectedGatePort.value) {
+  console.log('执行全部关闸逻辑...');
+  if (!controlDeviceCode.value) {
     ElMessage.error('缺少必要的控制参数');
     return;
   }
 
+  if (!gateExtInfo.value || !Array.isArray(gateExtInfo.value)) {
+    ElMessage.error('未获取到闸门信息');
+    return;
+  }
+
   try {
-    // 先执行停闸操作
-    // console.log('关闸前先执行停闸操作...');
-    // const stopPayload = {
-    //   devpoint: selectedGatePort.value,
-    //   controlVal: '3' // 停止
-    // };
-    // await gateOnOrOff(controlDeviceCode.value, JSON.stringify(stopPayload));
+    // 获取所有闸口信息
+    const gate1Info = gateExtInfo.value.find(item => item.devpoint === 'IRDA.DEVICE.GATE.OPENING');
+    const gate2Info = gateExtInfo.value.find(item => item.devpoint === 'IRDA2.DEVICE.GATE.OPENING');
 
-    // // 等待一段时间确保停闸操作完成
-    // await new Promise(resolve => setTimeout(resolve, 1000));
+    // 同时关闭所有闸口
+    const closePromises = [];
 
-    // 执行关闸操作
-    const closePayload = {
-      devpoint: selectedGatePort.value,
-      controlVal: '2' // 关阀
-    };
-    await gateOnOrOff(controlDeviceCode.value, JSON.stringify(closePayload));
-    ElMessage.success('关闸操作成功');
+    if (gate1Info) {
+      console.log('关闭一号闸口...');
+      const closePayload1 = {
+        devpoint: gate1Info.devpoint,
+        controlVal: '2' // 关阀
+      };
+      closePromises.push(gateOnOrOff(controlDeviceCode.value, JSON.stringify(closePayload1)));
+    }
+
+    if (gate2Info) {
+      console.log('关闭二号闸口...');
+      const closePayload2 = {
+        devpoint: gate2Info.devpoint,
+        controlVal: '2' // 关阀
+      };
+      closePromises.push(gateOnOrOff(controlDeviceCode.value, JSON.stringify(closePayload2)));
+    }
+
+    // 等待所有关闸操作完成
+    await Promise.all(closePromises);
+
+    ElMessage.success('全部关闸操作成功');
     // 更新闸门状态
     await refreshGateStatus();
   } catch (error) {
-    console.error('关闸操作失败:', error);
-    ElMessage.error('关闸操作失败');
+    console.error('全部关闸操作失败:', error);
+    ElMessage.error('全部关闸操作失败');
   }
 };
 
@@ -922,9 +997,10 @@ const stopGate = async () => {
 
 // 刷新闸门状态
 const refreshGateStatus = async () => {
-  if (selectedGateId.value && selectedGate.value && selectedGate.value.gateStationCode) {
+  const currentNode = selectedDamNode.value;
+  if (currentNode && currentNode.gateStationCode) {
     // 只刷新闸门扩展信息，不重新获取摄像设备列表
-    await fetchGateExtendedInfo(selectedGate.value.gateStationCode);
+    await fetchGateExtendedInfo(currentNode.gateStationCode);
   }
 };
 
@@ -949,21 +1025,21 @@ const loadTaskList = async () => {
 watch(selectedDamNode, async (newNode, oldNode) => {
   // 停止之前的定时器
   stopGateExtInfoTimer();
-  
+
   // 清空视频相关状态
   cameraDevices.value = [];
   selectedCameraDevice.value = '';
   cleanup();
-  
+
   if (newNode) {
     console.log('Control页面: 检测到选中节点变化', newNode);
-    // 在这里可以根据选中的水库重新加载闸门管理数据
-    loadControlDataForReservoir(newNode);
 
     // 获取设备管理信息和闸门扩展信息
     if (newNode.gateStationCode) {
       await fetchGateExtendedInfo(newNode.gateStationCode);
       await fetchControlDeviceCode(newNode.gateStationCode);
+      // 获取摄像设备列表
+      await fetchCameraDevices(newNode.gateStationCode);
       // 启动定时器
       startGateExtInfoTimer(newNode.gateStationCode);
     }
@@ -972,9 +1048,6 @@ watch(selectedDamNode, async (newNode, oldNode) => {
     await loadTaskList();
   } else {
     // 清空数据
-    gateList.value = [];
-    selectedGateId.value = '';
-    selectedGate.value = null;
     gateExtInfo.value = null;
     selectedGatePort.value = '';
     currentGateInfo.value = null;
@@ -987,8 +1060,50 @@ watch(selectedDamNode, async (newNode, oldNode) => {
 
 // 获取任务类型标签
 const getTaskTypeLabel = (taskType) => {
-  const option = taskTypeOptions.value.find(item => item.value === taskType);
+  const option = taskTypeOptions.value.find(opt => opt.value === taskType);
   return option ? option.label : taskType;
+};
+
+// 执行闸口开度控制
+const executeGateOpening = async () => {
+  if (!selectedGatePort.value || gateOpeningForm.openingValue === null || gateOpeningForm.openingValue === undefined) {
+    ElMessage.warning('请选择闸口并输入开度值');
+    return;
+  }
+
+  if (!controlDeviceCode.value) {
+    ElMessage.warning('未获取到设备编码');
+    return;
+  }
+
+  try {
+    gateOpeningLoading.value = true;
+
+    // 根据选中的闸口确定devpoint
+    let devpoint = '';
+    if (selectedGatePort.value === 'IRDA.DEVICE.GATE.OPENING') {
+      devpoint = 'IRDA1.DEVICE.GATE.PROGRESS';
+    } else if (selectedGatePort.value === 'IRDA2.DEVICE.GATE.OPENING') {
+      devpoint = 'IRDA2.DEVICE.GATE.PROGRESS';
+    } else {
+      ElMessage.error('无效的闸口选择');
+      return;
+    }
+
+    // 调用封装的接口发送控制指令
+    await setGateOpeningRate(controlDeviceCode.value, devpoint, gateOpeningForm.openingValue.toString());
+
+    ElMessage.success('闸口开度控制指令已发送');
+
+    // 清空输入框
+    gateOpeningForm.openingValue = null;
+
+  } catch (error) {
+    console.error('闸口开度控制失败:', error);
+    ElMessage.error('闸口开度控制失败: ' + (error.message || '未知错误'));
+  } finally {
+    gateOpeningLoading.value = false;
+  }
 };
 
 // 显示添加任务弹窗
@@ -1219,6 +1334,7 @@ onBeforeUnmount(async () => {
   position: relative;
   margin-bottom: 20px;
   text-align: center;
+
   // width:100%;
   .image-slot {
     display: flex;
@@ -1242,10 +1358,16 @@ onBeforeUnmount(async () => {
 }
 
 .gate-controls {
+  z-index: 1000;
+  position:absolute;
+  top: 10px;
+  left: 10px;
   text-align: center;
   // margin-top: auto; /* Push to bottom of flex column */
   padding-top: 30px;
-
+  display: flex;
+  gap:15px;
+  flex-direction: column;
   /* Space above buttons */
   .el-button {
     margin: 0 10px;

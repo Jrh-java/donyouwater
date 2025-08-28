@@ -257,7 +257,7 @@
     >
       <el-descriptions :column="2" border>
         <el-descriptions-item label="规则名称" align="center">{{ viewData.ruleName }}</el-descriptions-item>
-        <el-descriptions-item label="告警类型" align="center">{{ getWarnTypeText(viewData.warnType || '') }}</el-descriptions-item>
+        <el-descriptions-item label="告警类型" align="center">{{ getWarnTypeText(viewData.warnType) }}</el-descriptions-item>
         <el-descriptions-item label="触发阈值" align="center">
           {{ viewData.warnValue }}
           <span v-if="viewData.warnType === 'displacement'">mm</span>
@@ -265,7 +265,7 @@
           <span v-else-if="viewData.warnType === 'stress'">MPa</span>
           <span v-else-if="viewData.warnType === 'flow'">L/S</span>
         </el-descriptions-item>
-        <el-descriptions-item label="告警级别" align="center">{{ getWarnLevelText(viewData.warnLevel || '') }}</el-descriptions-item>
+        <el-descriptions-item label="告警级别" align="center">{{ getWarnLevelText(viewData.warnLevel) }}</el-descriptions-item>
         <el-descriptions-item label="规则描述" :span="2" align="center">{{ viewData.reamrks }}</el-descriptions-item>
         <el-descriptions-item label="所属流域" align="center">{{ getReservoirLabel(viewData.reservoirManagementId || '') }}</el-descriptions-item>
         <el-descriptions-item label="所属闸站" align="center">{{ getGateStationLabel(viewData.gateStationId || '') }}</el-descriptions-item>

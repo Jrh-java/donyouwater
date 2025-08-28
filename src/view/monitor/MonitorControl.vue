@@ -1,7 +1,7 @@
 <template>
   <el-container class="monitor-control-container">
     <!-- 左侧边栏 -->
-    <el-aside width="400px" class="sidebar">
+    <el-aside width="400px" class="sidebar" v-show="activeTab === 'playback'">
       <div class="location-section">
         <p class="section-title">位置</p>
         <el-input placeholder="搜索水库或位置" v-model="searchKeyword" class="search-input">
@@ -77,10 +77,10 @@
     <!-- 右侧主内容区 -->
     <el-main class="main-content">
       <el-tabs v-model="activeTab" class="video-tabs" @tab-change="handleTabChange" :before-leave="beforeTabLeave">
-        <el-tab-pane label="实时预览" name="realtime" :disabled="!selectedDevice">
+        <el-tab-pane label="实时预览" name="realtime">
           <!-- 实时预览内容 -->
         </el-tab-pane>
-        <el-tab-pane label="视频回放" name="playback" :disabled="!selectedDevice">
+        <el-tab-pane label="视频回放" name="playback">
           <!-- 视频回放内容 -->
         </el-tab-pane>
       </el-tabs>
@@ -111,13 +111,45 @@
         <!-- 实时预览播放按钮 -->
         <div class="realtime-control-bar" v-show="activeTab === 'realtime'">
           <div class="realtime-controls">
-            <el-button type="primary" :icon="VideoPlay" @click="playRealtime" :disabled="!selectedDevice">播放</el-button>
+            <el-button type="primary" :icon="VideoPlay" @click="playRealtime">播放所有设备</el-button>
           </div>
         </div>
 
         <!-- 视频显示区域 -->
         <div class="video-section">
-          <div class="video-display-area">
+          <!-- 实时预览网格布局 -->
+          <div v-if="activeTab === 'realtime'" class="video-grid-area">
+            <div 
+              v-for="(device, index) in realtimeDevices" 
+              :key="device.deviceCode"
+              class="video-grid-cell"
+            >
+              <video 
+                :ref="el => setVideoRef(el, index)"
+                class="video-player"
+                controls
+                muted
+                autoplay
+                playsinline
+                webkit-playsinline
+                x5-video-player-type="h5"
+                x5-video-orientation="portraint"
+              >
+                您的浏览器不支持视频播放
+              </video>
+              <div v-if="!device.videoUrl" class="video-placeholder">
+                <p>{{ device.deviceName || `设备 ${index + 1}` }}</p>
+                <p class="device-code">{{ device.deviceCode }}</p>
+              </div>
+              <div class="video-status-overlay">
+                <span>{{ device.deviceName || `设备 ${index + 1}` }}</span>
+                <span v-if="device.connectTime">{{ device.connectTime }}</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 视频回放单窗口布局 -->
+          <div v-else class="video-display-area">
             <div class="video-cell">
               <video 
                 ref="videoElement"
@@ -163,7 +195,8 @@ import {
   VideoPause,
   VideoPlay
 } from '@element-plus/icons-vue';
-import { getDamDirectoryListApi, getMonitorDevicesByGateStationCodeApi, sendDeviceCommandApi, sendBackCommandApi } from '@/api/reservoir';
+import { getMonitorDevicesByGateStationCodeApi, sendDeviceCommandApi, sendBackCommandApi, getDamDirectoryListApi } from '@/api/reservoir';
+import { getDeviceManagementPage } from '@/api/device';
 import { ElMessage } from 'element-plus';
 import flvjs from 'flv.js';
 
@@ -203,6 +236,19 @@ const videoUrl = ref('');
 const connectionStatus = ref('未连接');
 const connectTime = ref('');
 const isPlaying = ref(false);
+
+// 实时预览相关变量
+const realtimeDevices = ref([]);
+const videoElements = ref([]);
+const flvPlayers = ref([]);
+const streamRequestInterval = ref(null);
+
+// 设置视频元素引用
+const setVideoRef = (el, index) => {
+  if (el) {
+    videoElements.value[index] = el;
+  }
+};
 
 
 
@@ -269,6 +315,34 @@ const fetchMonitorDevices = async (gateStationCode) => {
     console.error('获取监控设备失败:', error);
     ElMessage.error('获取监控设备失败');
     monitorDevices.value = [];
+  }
+};
+
+// 获取实时预览设备列表
+const fetchRealtimeDevices = async () => {
+  try {
+    const response = await getDeviceManagementPage({
+      page: 1,
+      limit: 100,
+      mcsType: 'safemvs'
+    });
+    
+    // 转换设备数据格式
+    realtimeDevices.value = response.list.map(device => ({
+      deviceCode: device.deviceCode,
+      deviceName: device.deviceName,
+      videoUrl: '',
+      connectionStatus: '未连接',
+      connectTime: '',
+      isPlaying: false,
+      flvPlayer: null
+    }));
+    
+    console.log('获取到实时预览设备:', realtimeDevices.value);
+  } catch (error) {
+    console.error('获取实时预览设备失败:', error);
+    ElMessage.error('获取实时预览设备失败');
+    realtimeDevices.value = [];
   }
 };
 
@@ -487,6 +561,129 @@ const cleanup = () => {
   connectTime.value = '';
 };
 
+// 清理所有实时预览播放器
+const cleanupAllRealtimePlayers = () => {
+  flvPlayers.value.forEach((player, index) => {
+    if (player) {
+      try {
+        player.pause();
+        player.unload();
+        player.detachMediaElement();
+        player.destroy();
+      } catch (error) {
+        console.error(`清理播放器${index}失败:`, error);
+      }
+    }
+  });
+  
+  flvPlayers.value = [];
+  
+  // 重置设备状态
+  realtimeDevices.value.forEach(device => {
+    device.videoUrl = '';
+    device.connectionStatus = '未连接';
+    device.connectTime = '';
+    device.isPlaying = false;
+    device.flvPlayer = null;
+  });
+  
+  // 清理定时器
+  if (streamRequestInterval.value) {
+    clearInterval(streamRequestInterval.value);
+    streamRequestInterval.value = null;
+  }
+};
+
+// 初始化单个设备的FLV播放器
+const initSingleFLVPlayer = (url, deviceIndex) => {
+  const videoElement = videoElements.value[deviceIndex];
+  const device = realtimeDevices.value[deviceIndex];
+  
+  if (!videoElement || !device) {
+    console.error(`视频元素或设备数据未找到，索引: ${deviceIndex}`);
+    return;
+  }
+  
+  if (!url) {
+    console.error('视频URL为空');
+    return;
+  }
+  
+  try {
+    if (flvjs.isSupported()) {
+      const player = flvjs.createPlayer({
+        type: 'flv',
+        url: url,
+        isLive: true,
+        hasAudio: false,
+        hasVideo: true,
+        enableWorker: false,
+        enableStashBuffer: false,
+        lazyLoad: false,
+        autoCleanupSourceBuffer: true,
+        autoCleanupMaxBackwardDuration: 30,
+        autoCleanupMinBackwardDuration: 10,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; flv.js)',
+          'Cache-Control': 'no-cache'
+        }
+      });
+      
+      player.attachMediaElement(videoElement);
+      
+      // 监听播放器事件
+      player.on(flvjs.Events.LOADING_COMPLETE, () => {
+        console.log(`设备${deviceIndex} FLV加载完成`);
+        device.connectionStatus = '已连接';
+      });
+      
+      player.on(flvjs.Events.ERROR, (errorType, errorDetail, errorInfo) => {
+        console.error(`设备${deviceIndex} FLV播放错误:`, errorType, errorDetail, errorInfo);
+        device.connectionStatus = '连接失败';
+      });
+      
+      player.load();
+      
+      // 保存播放器引用
+      flvPlayers.value[deviceIndex] = player;
+      device.flvPlayer = player;
+      device.videoUrl = url;
+      
+      // 延迟播放
+      setTimeout(() => {
+        if (player && videoElement) {
+          const playPromise = player.play();
+          if (playPromise !== undefined) {
+            playPromise.then(() => {
+              console.log(`设备${deviceIndex}开始播放`);
+              device.isPlaying = true;
+              device.connectTime = new Date().toLocaleTimeString();
+            }).catch((error) => {
+              console.error(`设备${deviceIndex}播放失败:`, error);
+              // 尝试静音播放
+              if (videoElement) {
+                videoElement.muted = true;
+                videoElement.play().then(() => {
+                  console.log(`设备${deviceIndex}静音播放成功`);
+                  device.isPlaying = true;
+                  device.connectTime = new Date().toLocaleTimeString();
+                }).catch((mutedError) => {
+                  console.error(`设备${deviceIndex}静音播放也失败:`, mutedError);
+                });
+              }
+            });
+          }
+        }
+      }, 1000);
+      
+    } else {
+      console.error('浏览器不支持FLV播放');
+    }
+  } catch (error) {
+    console.error(`设备${deviceIndex} FLV播放器初始化失败:`, error);
+  }
+};
+
 const handleNodeClick = (data) => {
   console.log('点击节点:', data);
   currentVideoLocation.value = data.label;
@@ -544,7 +741,8 @@ const selectedRecording = ref(null);
 
 // 计算是否可以播放
 const canPlay = computed(() => {
-  return selectedDevice.value && timeRange.value && timeRange.value.length === 2;
+  // 只要选择了时间范围就可以点击播放按钮，设备选择在播放时验证
+  return timeRange.value && timeRange.value.length === 2;
 });
 
 // 发送视频回放命令
@@ -597,15 +795,89 @@ const playVideo = async () => {
   }
 };
 
-// 播放实时预览
-const playRealtime = async () => {
-  if (!selectedDevice.value) {
-    ElMessage.warning('请先选择摄像枪');
+// 批量发送设备控制命令
+const sendBatchControlCommands = async () => {
+  if (realtimeDevices.value.length === 0) {
+    ElMessage.warning('没有可用的设备');
     return;
   }
   
+  let successCount = 0;
+  let currentIndex = 0;
+  
+  const sendNextCommand = async () => {
+    if (currentIndex >= realtimeDevices.value.length) {
+      ElMessage.success(`成功发送 ${successCount}/${realtimeDevices.value.length} 个设备的取流命令`);
+      return;
+    }
+    
+    const device = realtimeDevices.value[currentIndex];
+    
+    try {
+      const topic = `YN/0000/769834/control/${device.deviceCode}`;
+      const payloadStr = JSON.stringify({
+        "command": "config",
+        "rtmpCtrl": {
+          "rtmpEnable": 1,
+          "rtmpServer": "119.3.245.90",
+          "rtmpPort": 1935,
+          "releaseTime": 5
+        }
+      });
+      
+      const result = await sendDeviceCommandApi(topic, payloadStr);
+      console.log(`设备${device.deviceCode}控制命令结果:`, result);
+      
+      if (result === "发送取流命令成功！") {
+        successCount++;
+        
+        // 构建FLV视频流地址
+        const flvUrl = `http://220.250.41.136:8866/live?url=rtmp://119.3.245.90/live/${device.deviceCode}`;
+        console.log(`准备播放设备${currentIndex}的FLV流:`, flvUrl);
+        
+        // 保存当前索引，避免异步调用时索引值变化
+        const deviceIndex = currentIndex;
+        
+        // 延迟初始化播放器，让设备准备好
+        setTimeout(() => {
+          initSingleFLVPlayer(flvUrl, deviceIndex);
+        }, 2000);
+      }
+    } catch (error) {
+      console.error(`设备${device.deviceCode}控制命令失败:`, error);
+    }
+    
+    currentIndex++;
+    
+    // 100ms间隔发送下一个命令
+    setTimeout(sendNextCommand, 100);
+  };
+  
+  // 开始发送命令
+  sendNextCommand();
+};
+
+// 播放实时预览
+const playRealtime = async () => {
+  if (activeTab.value !== 'realtime') {
+    return;
+  }
+  
+  if (realtimeDevices.value.length === 0) {
+    ElMessage.warning('没有可用的设备，正在获取设备列表...');
+    await fetchRealtimeDevices();
+    if (realtimeDevices.value.length === 0) {
+      ElMessage.error('获取设备列表失败');
+      return;
+    }
+  }
+  
   try {
-    await sendControlCommand(selectedDevice.value);
+    // 清理现有播放器
+    cleanupAllRealtimePlayers();
+    
+    // 批量发送控制命令
+    await sendBatchControlCommands();
   } catch (error) {
     ElMessage.error('播放实时预览失败');
   }
@@ -613,10 +885,7 @@ const playRealtime = async () => {
 
 // Tab切换前的验证
 const beforeTabLeave = (activeName, oldActiveName) => {
-  if (!selectedDevice.value) {
-    ElMessage.warning('请先选择摄像枪');
-    return false;
-  }
+  // 允许自由切换tab，不再需要预先选择设备
   return true;
 };
 
@@ -624,24 +893,34 @@ const beforeTabLeave = (activeName, oldActiveName) => {
 const handleTabChange = async (tabName) => {
   console.log('切换到Tab:', tabName);
   
-  // 先停止当前流
-  if (selectedDevice.value) {
-    await sendStopStreamCommand(selectedDevice.value);
-  }
-  
-  // 清理播放器
-  cleanup();
-  
   if (tabName === 'realtime') {
-    // 切换到实时预览，发送status=0的命令
+    // 切换到实时预览
+    // 先停止回放模式的流
+    if (selectedDevice.value) {
+      await sendStopStreamCommand(selectedDevice.value);
+    }
+    
+    // 清理回放播放器
+    cleanup();
+    
+    // 获取实时预览设备列表
+    await fetchRealtimeDevices();
+    
+    // 发送status=0的命令
     try {
-      await sendBackCommand(0);
+      if (selectedDevice.value) {
+        await sendBackCommand(0);
+      }
     } catch (error) {
       console.error('切换到实时预览失败:', error);
     }
   } else if (tabName === 'playback') {
-    // 切换到视频回放，发送status=2的命令（如果有时间范围）
-    if (timeRange.value && timeRange.value.length === 2) {
+    // 切换到视频回放
+    // 清理所有实时预览播放器
+    cleanupAllRealtimePlayers();
+    
+    // 发送status=2的命令（如果有时间范围）
+    if (timeRange.value && timeRange.value.length === 2 && selectedDevice.value) {
       try {
         await sendBackCommand(2, startTime.value, endTime.value);
       } catch (error) {
@@ -666,9 +945,14 @@ const togglePlayPause = () => {
 
 
 // 组件挂载时初始化
-onMounted(() => {
+onMounted(async () => {
   console.log('MonitorControl组件挂载');
   fetchDamDirectoryList();
+  
+  // 如果当前是实时预览模式，获取设备列表
+  if (activeTab.value === 'realtime') {
+    await fetchRealtimeDevices();
+  }
 });
 
 // 发送停止取流命令
@@ -703,7 +987,9 @@ onBeforeUnmount(async () => {
     await sendStopStreamCommand(selectedDevice.value);
   }
   
+  // 清理所有播放器
   cleanup();
+  cleanupAllRealtimePlayers();
 });
 
 </script>
@@ -815,6 +1101,69 @@ onBeforeUnmount(async () => {
   overflow: hidden;
   align-items: center;
   justify-content: center;
+}
+
+.video-grid-area {
+  flex-grow: 1;
+  background-color: #000;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  padding: 2px;
+  overflow-y: auto;
+}
+
+.video-grid-cell {
+  position: relative;
+  aspect-ratio: 16/9;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+.video-grid-cell .video-player {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #2a2a2a;
+}
+
+.video-grid-cell .video-placeholder {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #999;
+  font-size: 14px;
+  text-align: center;
+  padding: 10px;
+}
+
+.video-grid-cell .video-placeholder .device-code {
+  font-size: 12px;
+  color: #666;
+  margin-top: 5px;
+  word-break: break-all;
+}
+
+.video-grid-cell .video-status-overlay {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 120px;
+  word-break: break-all;
 }
 
 .video-cell {

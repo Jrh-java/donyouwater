@@ -50,6 +50,13 @@
         <div class="card-value">{{ envOverviewData.humidity.value }}%</div>
 
       </div>
+      <el-divider direction="vertical" />
+      <div class="indicator-card">
+        <el-icon class="indicator-icon" color="#1890FF" size="28"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2c1.1 0 2 .9 2 2 0 .74-.4 1.38-1 1.72v2.78c0 .55-.45 1-1 1s-1-.45-1-1V5.72c-.6-.34-1-.98-1-1.72 0-1.1.9-2 2-2zm4.24 7.17c-.39-.39-1.02-.39-1.41 0-.39.39-.39 1.02 0 1.41l1.06 1.06c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41L16.24 9.17zM11 14.5V9c0-.55.45-1 1-1s1 .45 1 1v5.5c1.21-.91 2-2.37 2-4 0-2.76-2.24-5-5-5s-5 2.24-5 5c0 1.63.79 3.09 2 4z"/></svg></el-icon>
+        <div class="card-title">降水量</div>
+        <div class="card-value">{{ envOverviewData.rainfall.value }}mm</div>
+
+      </div>
     </div>
 
     <!-- 图表区域 -->
@@ -106,7 +113,7 @@ import {
 import VChart from 'vue-echarts';
 import { ElIcon, ElSelect, ElOption } from 'element-plus';
 import { useStore } from '@/store/pinia';
-import { getEnvMcvTitleCollect, getWaterLevelMcsAnalyse, getTemperatureHumidityMcsAnalyse, getPrecipitationMcsAnalyse } from '@/api/reservoir';
+import { getEnvMcvTitleCollect, getWaterLevelMcsAnalyse, getTemperatureHumidityMcsAnalyse, getPrecipitationMcsAnalyse, getCurrentPrecipitation } from '@/api/reservoir';
 import { getDeviceManagementPage } from '@/api/device';
 import { getAlertRulePage } from '@/api/alert';
 
@@ -144,6 +151,10 @@ const envOverviewData = ref({
     state: 'normal'
   },
   humidity: {
+    value: 0,
+    state: 'normal'
+  },
+  rainfall: {
     value: 0,
     state: 'normal'
   }
@@ -285,6 +296,20 @@ const fetchEnvironmentOverviewData = async (reservoirNode) => {
       envOverviewData.value.temperature.value = 0;
       envOverviewData.value.humidity.value = 0;
     }
+    
+    // 获取降水量数据 - 使用选中的设备编码
+    const precipitationRes = await getCurrentPrecipitation({
+      id: selectedDeviceCode.value
+    });
+    console.log('Environment页面: 获取降水量数据', precipitationRes);
+    
+    // 处理降水量数据，如果接口返回 null 或数据为空，则显示 0
+    if (precipitationRes) {
+      envOverviewData.value.rainfall.value = precipitationRes.dailyRainfall || 0;
+    } else {
+      // 接口返回 null 时，降水量显示为 0
+      envOverviewData.value.rainfall.value = 0;
+    }
   } catch (error) {
     console.error('获取环境监测概览数据失败:', error);
     // 发生错误时，设置默认值为 0
@@ -292,6 +317,7 @@ const fetchEnvironmentOverviewData = async (reservoirNode) => {
     envOverviewData.value.windSpeed.value = 0;
     envOverviewData.value.temperature.value = 0;
     envOverviewData.value.humidity.value = 0;
+    envOverviewData.value.rainfall.value = 0;
   }
 };
 

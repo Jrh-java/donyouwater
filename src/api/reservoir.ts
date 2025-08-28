@@ -427,12 +427,22 @@ export interface DisplaceTitleData {
   onlineCount: number
   warnCount: number
   maxDisplaceValue: number
-}
-
-// 获取位移监测指标数据
+}/**
+ * 获取位移监测指标数据
+ */
 export function getDisplaceTitle(): Promise<DisplaceTitleData> {
   return request({
     url: '/authApi/reservoir/warehouseGate/reservoirEnvMcs/getDisplaceTitle',
+    method: 'get',
+  });
+}
+
+/**
+ * 闸口开度控制
+ */
+export function setGateOpeningRate(deviceCode: string, devpoint: string, controlVal: string) {
+  return request({
+    url: `/authApi/reservoir/device/deviceGateInfo/openRate?deviceCode=${deviceCode}&devpoint=${devpoint}&controlVal=${controlVal}`,
     method: 'get'
-  })
+  });
 }
