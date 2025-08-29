@@ -33,6 +33,8 @@
       :device-data="selectedBillboardData?.deviceData" @close="closeDisplacementPanel" />
     <GateControlPanel :show="showGateControlPanel" :panel-title="selectedGateData?.title"
       :device-code="selectedGateData?.deviceCode" :gate-id="selectedGateData?.gateId" @close="closeGateControlPanel" @animate-gate="handleGateAnimation" />
+    <GateControlModal :show="showGateControlModal" :modal-title="selectedStationData?.title"
+      :gate-station-code="selectedStationData?.gateStationCode" @close="closeGateControlModal" />
     <DamDetailModal :show="showDamDetailModal" :dam-id="selectedDamData?.id" @close="closeDamDetailModal" />
     <EnvironmentMonitorPanel :show="showEnvironmentPanel" :device-data="selectedBillboardData?.deviceData" @close="closeEnvironmentPanel" />
     <PressureMonitorPanel :show="showPressurePanel" :device-data="selectedBillboardData?.deviceData" @close="closePressurePanel" />
@@ -48,6 +50,7 @@ import { storeToRefs } from 'pinia';
 import VideoMonitorPanel from './viewerComponent/VideoMonitorPanel.vue'; // 引入Panel组件
 import DisplacementMonitorPanel from './viewerComponent/DisplacementMonitorPanel.vue'; // 引入位移监测Panel组件
 import GateControlPanel from './viewerComponent/GateControlPanel.vue'; // 引入闸门控制Panel组件
+import GateControlModal from './viewerComponent/GateControlModal.vue'; // 引入闸门控制Modal组件
 import DamDetailModal from '@/view/viewer/monitor/leftComponent/DamDetailModal.vue'; // 引入水坝详情弹窗
 import EnvironmentMonitorPanel from './viewerComponent/EnvironmentMonitorPanel.vue'; // 引入环境监测Panel组件
 import PressureMonitorPanel from './viewerComponent/PressureMonitorPanel.vue'; // 引入压力监测Panel组件
@@ -56,7 +59,7 @@ import { getReservoirPage, getReservoirDeviceManagementInfo } from '@/api/reserv
 import { getDeviceManagementPage } from '@/api/device'; // 导入设备API
 import dynamicWall from '@/utils/electronicFence';
 import blueBG from '@/assets/viewer/billboard/height-bg-blue.png'
-import { loadGLBModels, animateZhamenHeight, handleZhamenClick, getZhamenAnimationState } from '@/utils/cesium/glbModelLoader';
+import { loadGLBModels, animateZhamenHeight, handleZhamenClick, handleStationClick, getZhamenAnimationState } from '@/utils/cesium/glbModelLoader';
 // 删除3D Tiles加载器导入
 const store = useStore();
 // const router = useRouter(); // 如果需要路由功能，取消注释
@@ -69,12 +72,14 @@ const selectedDamNode = computed(() => store.selectedDamNode);
 const showVideoPanel = ref(false);
 const showDisplacementPanel = ref(false); // 控制位移监测面板的显示
 const showGateControlPanel = ref(false); // 控制闸门控制面板的显示
+const showGateControlModal = ref(false); // 控制闸站控制弹窗的显示
 const showDamDetailModal = ref(false); // 控制水坝详情弹窗的显示
 const showEnvironmentPanel = ref(false); // 控制环境监测面板的显示
 const showPressurePanel = ref(false); // 控制压力监测面板的显示
 const selectedBillboardData = ref(null); // 用于视频和位移监测
 const selectedDamData = ref(null); // 用于水坝详情
 const selectedGateData = ref(null); // 用于闸门控制
+const selectedStationData = ref(null); // 用于闸站控制
 
 // 地图按钮堆叠状态
 const isMapButtonsHovered = ref(false);
@@ -605,6 +610,17 @@ onMounted(() => {
       return;
     }
 
+    // 检查是否点击了闸站模型（FJ.JODY.FH01前缀）
+    if (Cesium.defined(pickedObject) && Cesium.defined(pickedObject.id) && pickedObject.id.id && pickedObject.id.id.includes('FJ.JODY.FH01') && pickedObject.id.id.includes('STATION')) {
+      // 获取模型名称
+      const modelName = pickedObject.id.customData?.originalConfig?.name || null;
+      handleStationClick(pickedObject.id.id, (stationData) => {
+        selectedStationData.value = stationData;
+        showGateControlModal.value = true;
+      }, modelName);
+      return;
+    }
+
     if (Cesium.defined(pickedObject) && Cesium.defined(pickedObject.id) && Cesium.defined(pickedObject.id.customData)) {
       const data = pickedObject.id.customData;
       selectedBillboardData.value = data;
@@ -655,6 +671,63 @@ onMounted(() => {
       }
     }
   }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+  // 添加鼠标悬浮事件处理器
+  let hoverBillboard = null;
+  let hoverLabel = null;
+  
+  handler.setInputAction(function (movement) {
+    const pickedObject = viewer.scene.pick(movement.endPosition);
+    
+    // 清除之前的悬浮显示
+    if (hoverBillboard) {
+      viewer.entities.remove(hoverBillboard);
+      hoverBillboard = null;
+    }
+    if (hoverLabel) {
+      viewer.entities.remove(hoverLabel);
+      hoverLabel = null;
+    }
+    
+    // 检查是否悬浮在FJ.JODY.FH01前缀的GLB模型上
+    if (Cesium.defined(pickedObject) && 
+        Cesium.defined(pickedObject.id) && 
+        pickedObject.id.id && 
+        pickedObject.id.id.includes('FJ.JODY.FH01') && 
+        pickedObject.id.id.includes('STATION')) {
+      
+      // 获取模型名称和位置
+      const modelName = pickedObject.id.customData?.originalConfig?.name || '闸站';
+      const position = pickedObject.id.position.getValue();
+      
+      if (position) {
+        // 创建悬浮的label
+        hoverLabel = viewer.entities.add({
+          position: position,
+          label: {
+            text: modelName,
+            font: '14px Arial',
+            fillColor: Cesium.Color.WHITE,
+            pixelOffset: new Cesium.Cartesian2(0, -25),
+            showBackground: true,
+            backgroundColor: Cesium.Color.BLACK.withAlpha(0.7),
+            backgroundPadding: new Cesium.Cartesian2(8, 4)
+          }
+        });
+        
+        // 创建悬浮的billboard
+        hoverBillboard = viewer.entities.add({
+          position: position,
+          billboard: {
+            image: blueBG,
+            scale: 1.0,
+            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+            heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
+          }
+        });
+      }
+    }
+  }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
 
   // 监听header面板切换事件
   watch(activePanel, (newPanel) => {
@@ -737,6 +810,12 @@ const closeDisplacementPanel = () => {
 const closeGateControlPanel = () => {
   showGateControlPanel.value = false;
   selectedGateData.value = null;
+};
+
+// 关闭闸站控制弹窗
+const closeGateControlModal = () => {
+  showGateControlModal.value = false;
+  selectedStationData.value = null;
 };
 
 // 处理闸门动画

@@ -163,6 +163,37 @@ export const handleZhamenClick = (entityId, onGateClick) => {
 };
 
 /**
+ * 处理闸站模型点击事件
+ * @param {string} entityId 实体ID
+ * @param {Function} onStationClick 闸站点击回调函数
+ * @param {string} modelName 模型名称（从GLB配置中获取）
+ */
+export const handleStationClick = (entityId, onStationClick, modelName = null) => {
+  // 检查是否为FJ.JODY.FH01前缀的闸站模型
+  const stationMatch = entityId.match(/glbModel-(FJ\.JODY\.FH01\..+\.STATION)$/);
+  if (stationMatch && stationMatch[1]) {
+    const stationCode = stationMatch[1];
+    
+    // 使用传入的模型名称作为标题，如果没有则使用默认标题
+    const stationTitle = modelName || '闸站控制';
+    
+    const stationData = {
+      title: stationTitle,
+      gateStationCode: stationCode,
+      stationId: entityId
+    };
+    
+    if (onStationClick) {
+      onStationClick(stationData);
+    }
+    
+    console.log('点击闸站模型，闸站编码:', stationCode, '闸站ID:', entityId, '模型名称:', modelName);
+  } else {
+    console.warn('无法从实体ID中提取闸站编码:', entityId);
+  }
+};
+
+/**
  * 加载GLB模型
  * @param {Cesium.Viewer} viewer Cesium viewer 实例
  * @param {Function} onGateClick 闸门点击回调函数（可选）

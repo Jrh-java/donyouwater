@@ -67,6 +67,7 @@
         <div class="gate-port-selection" style="margin: 20px 0;">
           <el-form-item label="选择闸口:" style="font-size: 16px;">
             <el-select v-model="selectedGatePort" placeholder="请选择闸口" style="width: 200px;" :teleported="false"
+               :disabled="!selectedGatePort"
               @change="handleGatePortChange">
               <el-option v-for="option in gatePortOptions" :key="option.value" :label="option.label"
                 :value="option.value"></el-option>
@@ -78,8 +79,20 @@
         <div class="gate-opening-control" style="margin: 20px 0; text-align: left;">
           <el-form :inline="true" :model="gateOpeningForm">
             <el-form-item label="闸口开度:" style="font-size: 16px;">
-              <el-input-number v-model="gateOpeningForm.openingValue" :min="0" :max="100" :step="2" placeholder="请输入开度"
-                style="width: 200px;" :disabled="!selectedGatePort" />
+              <el-input 
+                v-model.number="gateOpeningForm.openingValue" 
+                type="number" 
+                :min="0" 
+                :max="100" 
+                placeholder="请输入开度"
+                style="width: 200px;" 
+                :disabled="!selectedGatePort"
+                @input="handleOpeningValueInput"
+              >
+                <template #suffix>
+                  <span>%</span>
+                </template>
+              </el-input>
             </el-form-item>
             <el-form-item>
               <el-button type="primary" @click="showConfirmationDialog('opening')"
@@ -545,6 +558,19 @@ const handleGatePortChange = (selectedPort) => {
   } else {
     currentGateInfo.value = null;
     console.warn('未找到对应闸口的信息:', selectedPort);
+  }
+};
+
+// 处理开度输入值变化
+const handleOpeningValueInput = (value) => {
+  // 确保输入值在0-100范围内
+  if (value !== null && value !== undefined && value !== '') {
+    const numValue = Number(value);
+    if (numValue < 0) {
+      gateOpeningForm.openingValue = 0;
+    } else if (numValue > 100) {
+      gateOpeningForm.openingValue = 100;
+    }
   }
 };
 

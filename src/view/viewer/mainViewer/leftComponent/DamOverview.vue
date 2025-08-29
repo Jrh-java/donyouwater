@@ -8,7 +8,7 @@
     </template>
     <template #content>
       <div class="statistics-content">
-        <div class="statistic-item">
+        <div class="statistic-item" @click="showDevicePanel">
           <img src="@/assets/viewer/statistic.png" alt="statistic icon" class="statistic-icon" />
           <div class="statistic-text">
             <p class="statistic-label">水闸站总量</p>
@@ -39,10 +39,14 @@
       </div>
     </template>
   </SubtitleFrame>
+  
+  <!-- 闸门站设备管理弹窗 -->
+  <GateStationDevicePanel :show="showDevicePanelFlag" @close="closeDevicePanel" />
 </template>
 
 <script setup>
 import SubtitleFrame from '@/components/subtitleFrame.vue';
+import GateStationDevicePanel from './GateStationDevicePanel.vue';
 import { ref, onMounted } from 'vue';
 import { getDamDirectoryListApi } from '@/api/reservoir';
 
@@ -53,6 +57,19 @@ const updateTime = ref(formatDateTime(new Date()));
 const totalGateStations = ref(0);
 const onlineGateStations = ref(0);
 const riskAlerts = ref(2); // 风险告警数量暂时保持固定值
+
+// 弹窗控制
+const showDevicePanelFlag = ref(false);
+
+// 显示设备管理弹窗
+const showDevicePanel = () => {
+  showDevicePanelFlag.value = true;
+};
+
+// 关闭设备管理弹窗
+const closeDevicePanel = () => {
+  showDevicePanelFlag.value = false;
+};
 
 function formatDateTime(date) {
   const year = date.getFullYear();
@@ -122,6 +139,13 @@ onMounted(() => {
   align-items: center;
   justify-content: flex-start;
   padding: 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+  
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
 }
 
 .statistic-icon {

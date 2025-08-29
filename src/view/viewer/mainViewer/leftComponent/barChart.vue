@@ -14,7 +14,7 @@
   // Data from the image
   const damAgeData = {
     categories: ['<10年', '10-20年', '20-30', '30-50', '>50年'],
-    counts: [4, 0, 0, 0, 0],
+    counts: [5, 0, 0, 0, 0],
     percentages: ['', '', '', '', '']
   };
 var maxValue = 30;
