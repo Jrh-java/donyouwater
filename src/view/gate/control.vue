@@ -42,6 +42,15 @@
             </div>
           </div>
           <!-- 闸门站图片显示 -->
+           <!-- 一号闸口状态图片 -->
+           <img v-show="gate1Info && gate1Info.controlStatus === '1'" src="/src/assets/images/gate-up.png" alt="闸门-开启" class="gate-status-up gate-1" />
+           <img v-show="gate1Info && gate1Info.controlStatus === '2'" src="/src/assets/images/gate-down.png" alt="闸门-关闭" class="gate-status-down gate-1" />
+           <img v-show="gate1Info && gate1Info.controlStatus === '3'" src="/src/assets/images/gate-stop.png" alt="闸门-停止" class="gate-status-stop gate-1" />
+           
+           <!-- 二号闸口状态图片 -->
+           <img v-show="gate2Info && gate2Info.controlStatus === '1'" src="/src/assets/images/gate-up.png" alt="闸门-开启" class="gate-status-up gate-2" />
+           <img v-show="gate2Info && gate2Info.controlStatus === '2'" src="/src/assets/images/gate-down.png" alt="闸门-关闭" class="gate-status-down gate-2" />
+           <img v-show="gate2Info && gate2Info.controlStatus === '3'" src="/src/assets/images/gate-stop.png" alt="闸门-停止" class="gate-status-stop gate-2" />
           <img src="/src/assets/images/GateStation.jpg" alt="闸门站" class="gate-station-image" />
           <img src="/src/assets/images/Gate.png" alt="闸门口1" class="gate-image gate-1"
             :style="{ '--gate1-position': `${gate1Position}%` }" />
@@ -63,21 +72,17 @@
             '--' }}米
           </el-descriptions-item>
         </el-descriptions>
-        <!-- 闸口选择 -->
-        <div class="gate-port-selection" style="margin: 20px 0;">
-          <el-form-item label="选择闸口:" style="font-size: 16px;">
-            <el-select v-model="selectedGatePort" placeholder="请选择闸口" style="width: 200px;" :teleported="false"
-               :disabled="!selectedGatePort"
-              @change="handleGatePortChange">
-              <el-option v-for="option in gatePortOptions" :key="option.value" :label="option.label"
-                :value="option.value"></el-option>
-            </el-select>
-          </el-form-item>
-        </div>
-
-        <!-- 闸口开度控制 -->
-        <div class="gate-opening-control" style="margin: 20px 0; text-align: left;">
+        <!-- 闸口选择和开度控制 -->
+        <div class="gate-control-section" style="margin: 20px 0;">
           <el-form :inline="true" :model="gateOpeningForm">
+            <el-form-item label="选择闸口:" style="font-size: 16px;">
+              <el-select v-model="selectedGatePort" placeholder="请选择闸口" style="width: 200px;" :teleported="false"
+                 :disabled="!selectedGatePort"
+                @change="handleGatePortChange">
+                <el-option v-for="option in gatePortOptions" :key="option.value" :label="option.label"
+                  :value="option.value"></el-option>
+              </el-select>
+            </el-form-item>
             <el-form-item label="闸口开度:" style="font-size: 16px;">
               <el-input 
                 v-model.number="gateOpeningForm.openingValue" 
@@ -94,16 +99,17 @@
                 </template>
               </el-input>
             </el-form-item>
-            <el-form-item>
-              <el-button type="primary" @click="showConfirmationDialog('opening')"
-                :disabled="!selectedGatePort || (currentGateInfo && String(currentGateInfo.isHandle) === '1.0') || gateOpeningForm.openingValue === null || gateOpeningForm.openingValue === undefined"
-                :loading="gateOpeningLoading">
-                执行
-              </el-button>
-              <el-button type="warning" @click="stopGate"
-                :disabled="!selectedGatePort || (currentGateInfo && String(currentGateInfo.isHandle) === '1.0')">停闸</el-button>
-            </el-form-item>
           </el-form>
+          <!-- 按钮区域 -->
+          <div style="text-align: center; margin-top: 10px;">
+            <el-button type="primary" @click="showConfirmationDialog('opening')"
+              :disabled="!selectedGatePort || (currentGateInfo && String(currentGateInfo.isHandle) === '1.0') || gateOpeningForm.openingValue === null || gateOpeningForm.openingValue === undefined"
+              :loading="gateOpeningLoading">
+              执行
+            </el-button>
+            <el-button type="warning" @click="stopGate"
+              :disabled="!selectedGatePort || (currentGateInfo && String(currentGateInfo.isHandle) === '1.0')">停闸</el-button>
+          </div>
         </div>
 
 
@@ -355,6 +361,24 @@
       transform: translateX(-50%) translateY(var(--gate1-position, -45%));
       /* 水平居中 + 垂直移动 */
     }
+
+   
+  }
+  .gate-status-up,
+  .gate-status-down,
+  .gate-status-stop {
+    position: absolute;
+    top: 45%;
+    width: 50px;
+    transition: transform 0.5s ease-in-out;
+    &.gate-1 {
+      left: 54%;
+      transform: translateX(-50%) translateY(-45%);
+    }
+    &.gate-2 {
+      left: 36%;
+      transform: translateX(-50%) translateY(-45%);
+    }
   }
 }
 </style>
@@ -364,7 +388,7 @@ import { ref, watch, computed, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { Picture, VideoCamera, CaretRight } from '@element-plus/icons-vue';
 import { ElMessage, ElDialog, ElInput, ElButton, ElDivider } from 'element-plus';
 import { useStore } from '@/store/pinia';
-import { gateOnOrOff, getMonitorDevicesByGateStationCodeApi, sendDeviceCommandApi, getDeviceManagementInfo, getGateExtInfo, getGateTaskList, taskSend, setGateOpeningRate } from '@/api/reservoir';
+import { gateOnOrOff, getMonitorDevicesByGateStationCodeApi, sendDeviceCommandApi, getDeviceManagementInfo, getGateExtInfo, getGateTaskList, taskSend, setGateOpeningRate, getGateControlCallback } from '@/api/reservoir';
 import flvjs from 'flv.js';
 
 
@@ -388,7 +412,7 @@ const gate2Position = ref(-45); // 闸门2位置（0%开度时为-45%）
 // 闸口选择
 const selectedGatePort = ref('');
 const gatePortOptions = ref([
-  { label: '一号闸口', value: 'IRDA.DEVICE.GATE.OPENING' },
+  { label: '一号闸口', value: 'IRDA1.DEVICE.GATE.OPENING' },
   { label: '二号闸口', value: 'IRDA2.DEVICE.GATE.OPENING' }
 ]);
 
@@ -434,7 +458,7 @@ const selectedDamNode = computed(() => store.selectedDamNode);
 // 计算属性：获取一号闸口信息
 const gate1Info = computed(() => {
   if (!gateExtInfo.value || !Array.isArray(gateExtInfo.value)) return null;
-  return gateExtInfo.value.find(item => item.devpoint === 'IRDA.DEVICE.GATE.OPENING');
+  return gateExtInfo.value.find(item => item.devpoint === 'IRDA1.DEVICE.GATE.OPENING');
 });
 
 // 计算属性：获取二号闸口信息
@@ -456,7 +480,7 @@ const updateGatePositions = (extInfo) => {
 
   // 找到对应的闸门信息并更新位置
   extInfo.forEach(item => {
-    if (item.devpoint === 'IRDA.DEVICE.GATE.OPENING') {
+    if (item.devpoint === 'IRDA1.DEVICE.GATE.OPENING') {
       // 闸门1
       gate1Position.value = calculateGatePosition(item.openingDegree || 0);
     } else if (item.devpoint === 'IRDA2.DEVICE.GATE.OPENING') {
@@ -518,7 +542,7 @@ const startGateExtInfoTimer = (gateStationCode) => {
   // 启动新的定时器，每10秒获取一次
   gateExtInfoTimer = setInterval(() => {
     fetchGateExtendedInfo(gateStationCode);
-  }, 4000);
+  }, 3000);
 };
 
 // 停止闸门扩展信息定时器
@@ -908,17 +932,15 @@ const openGateLogic = async () => {
 
   try {
     // 获取所有闸口信息
-    const gate1Info = gateExtInfo.value.find(item => item.devpoint === 'IRDA.DEVICE.GATE.OPENING');
+    const gate1Info = gateExtInfo.value.find(item => item.devpoint === 'IRDA1.DEVICE.GATE.OPENING');
     const gate2Info = gateExtInfo.value.find(item => item.devpoint === 'IRDA2.DEVICE.GATE.OPENING');
 
     // 先开一号闸口
     if (gate1Info) {
       console.log('开启一号闸口...');
-      const openPayload1 = {
-        devpoint: gate1Info.devpoint,
-        controlVal: '1' // 开阀
-      };
-      await gateOnOrOff(controlDeviceCode.value, JSON.stringify(openPayload1));
+      // 根据选中的闸口确定devpoint
+      let devpoint1 = 'IRDA1.DEVICE.GATE.PROGRESS';
+      await setGateOpeningRate(controlDeviceCode.value, devpoint1, '100');
       console.log('一号闸口开启成功');
     }
 
@@ -928,11 +950,9 @@ const openGateLogic = async () => {
     // 再开二号闸口
     if (gate2Info) {
       console.log('开启二号闸口...');
-      const openPayload2 = {
-        devpoint: gate2Info.devpoint,
-        controlVal: '1' // 开阀
-      };
-      await gateOnOrOff(controlDeviceCode.value, JSON.stringify(openPayload2));
+      // 根据选中的闸口确定devpoint
+      let devpoint2 = 'IRDA2.DEVICE.GATE.PROGRESS';
+      await setGateOpeningRate(controlDeviceCode.value, devpoint2, '100');
       console.log('二号闸口开启成功');
     }
 
@@ -959,7 +979,7 @@ const closeGateLogic = async () => {
 
   try {
     // 获取所有闸口信息
-    const gate1Info = gateExtInfo.value.find(item => item.devpoint === 'IRDA.DEVICE.GATE.OPENING');
+    const gate1Info = gateExtInfo.value.find(item => item.devpoint === 'IRDA1.DEVICE.GATE.OPENING');
     const gate2Info = gateExtInfo.value.find(item => item.devpoint === 'IRDA2.DEVICE.GATE.OPENING');
 
     // 同时关闭所有闸口
@@ -967,20 +987,16 @@ const closeGateLogic = async () => {
 
     if (gate1Info) {
       console.log('关闭一号闸口...');
-      const closePayload1 = {
-        devpoint: gate1Info.devpoint,
-        controlVal: '2' // 关阀
-      };
-      closePromises.push(gateOnOrOff(controlDeviceCode.value, JSON.stringify(closePayload1)));
+      // 根据选中的闸口确定devpoint
+      let devpoint1 = 'IRDA1.DEVICE.GATE.PROGRESS';
+      closePromises.push(setGateOpeningRate(controlDeviceCode.value, devpoint1, '0'));
     }
 
     if (gate2Info) {
       console.log('关闭二号闸口...');
-      const closePayload2 = {
-        devpoint: gate2Info.devpoint,
-        controlVal: '2' // 关阀
-      };
-      closePromises.push(gateOnOrOff(controlDeviceCode.value, JSON.stringify(closePayload2)));
+      // 根据选中的闸口确定devpoint
+      let devpoint2 = 'IRDA2.DEVICE.GATE.PROGRESS';
+      closePromises.push(setGateOpeningRate(controlDeviceCode.value, devpoint2, '0'));
     }
 
     // 等待所有关闸操作完成
@@ -996,10 +1012,10 @@ const closeGateLogic = async () => {
 };
 
 const stopGate = async () => {
-  if (!selectedGateId.value) {
-    ElMessage.warning('请先选择闸门');
-    return;
-  }
+  // if (!selectedGateId.value) {
+  //   ElMessage.warning('请先选择闸门');
+  //   return;
+  // }
 
   if (!controlDeviceCode.value || !selectedGatePort.value) {
     ElMessage.error('缺少必要的控制参数');
@@ -1107,7 +1123,7 @@ const executeGateOpening = async () => {
 
     // 根据选中的闸口确定devpoint
     let devpoint = '';
-    if (selectedGatePort.value === 'IRDA.DEVICE.GATE.OPENING') {
+    if (selectedGatePort.value === 'IRDA1.DEVICE.GATE.OPENING') {
       devpoint = 'IRDA1.DEVICE.GATE.PROGRESS';
     } else if (selectedGatePort.value === 'IRDA2.DEVICE.GATE.OPENING') {
       devpoint = 'IRDA2.DEVICE.GATE.PROGRESS';
@@ -1119,7 +1135,18 @@ const executeGateOpening = async () => {
     // 调用封装的接口发送控制指令
     await setGateOpeningRate(controlDeviceCode.value, devpoint, gateOpeningForm.openingValue.toString());
 
-    ElMessage.success('闸口开度控制指令已发送');
+    // 检查指令发送结果
+    try {
+      const callbackResult = await getGateControlCallback(controlDeviceCode.value, devpoint);
+      if (callbackResult === "1") {
+        ElMessage.success('闸口开度控制指令发送成功');
+      } else {
+        ElMessage.error('闸口开度控制指令发送失败');
+      }
+    } catch (callbackError) {
+      console.error('获取指令回调结果失败:', callbackError);
+      ElMessage.warning('指令已发送，但无法确认执行状态');
+    }
 
     // 清空输入框
     gateOpeningForm.openingValue = null;

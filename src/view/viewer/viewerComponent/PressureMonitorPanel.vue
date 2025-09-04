@@ -14,7 +14,7 @@
     <el-table :data="tableData" style="width: 100%" border v-loading="loading">
       <el-table-column prop="id" label="序号" width="60" align="center" type="index" :index="getTableIndex"></el-table-column>
       <el-table-column prop="mvcTime" label="监测时间" width="180" align="center"></el-table-column>
-      <el-table-column prop="deviceCode" label="设备编号" align="center"></el-table-column>
+      <el-table-column prop="deviceCode" label="设备编号" width="200" align="center"></el-table-column>
       <el-table-column prop="waterLevel" label="水位(m)" align="center"></el-table-column>
       <el-table-column prop="elevationWaterLevel" label="高程水位(m)" align="center"></el-table-column>
       <el-table-column prop="waterPressure" label="水压(kPa)" align="center"></el-table-column>

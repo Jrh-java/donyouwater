@@ -26,7 +26,7 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/localhost8080/, ''),
       },
       '/authApi': {
-        // target: 'http://192.168.31.157:9050 ',
+        // target: 'http://192.168.5.108:9050 ',
         target: 'http://220.250.41.136:9050',
         
         changeOrigin: true,

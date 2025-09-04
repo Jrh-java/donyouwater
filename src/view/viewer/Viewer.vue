@@ -60,6 +60,7 @@ import { getDeviceManagementPage } from '@/api/device'; // 导入设备API
 import dynamicWall from '@/utils/electronicFence';
 import blueBG from '@/assets/viewer/billboard/height-bg-blue.png'
 import { loadGLBModels, animateZhamenHeight, handleZhamenClick, handleStationClick, getZhamenAnimationState } from '@/utils/cesium/glbModelLoader';
+
 // 删除3D Tiles加载器导入
 const store = useStore();
 // const router = useRouter(); // 如果需要路由功能，取消注释
@@ -676,58 +677,43 @@ onMounted(() => {
   let hoverBillboard = null;
   let hoverLabel = null;
   
-  handler.setInputAction(function (movement) {
-    const pickedObject = viewer.scene.pick(movement.endPosition);
-    
-    // 清除之前的悬浮显示
-    if (hoverBillboard) {
-      viewer.entities.remove(hoverBillboard);
-      hoverBillboard = null;
-    }
-    if (hoverLabel) {
-      viewer.entities.remove(hoverLabel);
-      hoverLabel = null;
-    }
-    
-    // 检查是否悬浮在FJ.JODY.FH01前缀的GLB模型上
-    if (Cesium.defined(pickedObject) && 
-        Cesium.defined(pickedObject.id) && 
-        pickedObject.id.id && 
-        pickedObject.id.id.includes('FJ.JODY.FH01') && 
-        pickedObject.id.id.includes('STATION')) {
-      
-      // 获取模型名称和位置
-      const modelName = pickedObject.id.customData?.originalConfig?.name || '闸站';
-      const position = pickedObject.id.position.getValue();
-      
-      if (position) {
-        // 创建悬浮的label
-        hoverLabel = viewer.entities.add({
-          position: position,
-          label: {
-            text: modelName,
-            font: '14px Arial',
-            fillColor: Cesium.Color.WHITE,
-            pixelOffset: new Cesium.Cartesian2(0, -25),
-            showBackground: true,
-            backgroundColor: Cesium.Color.BLACK.withAlpha(0.7),
-            backgroundPadding: new Cesium.Cartesian2(8, 4)
-          }
-        });
+  // 为所有FJ.JODY.FH01前缀的GLB模型添加常显标签
+  const addPermanentLabels = () => {
+    // 遍历所有实体，找到FJ.JODY.FH01前缀的GLB模型
+    viewer.entities.values.forEach(entity => {
+      if (entity.id && 
+          entity.id.includes('FJ.JODY.FH01') && 
+          entity.id.includes('STATION') &&
+          entity.customData?.originalConfig?.name) {
         
-        // 创建悬浮的billboard
-        hoverBillboard = viewer.entities.add({
-          position: position,
-          billboard: {
-            image: blueBG,
-            scale: 1.0,
-            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-            heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
-          }
-        });
+        const modelName = entity.customData.originalConfig.name;
+        const position = entity.position.getValue();
+        
+        if (position) {
+          // 为每个模型添加常显标签
+          viewer.entities.add({
+            id: `label-${entity.id}`,
+            position: position,
+            label: {
+              text: modelName,
+              font: '14px Arial',
+              fillColor: Cesium.Color.WHITE,
+              pixelOffset: new Cesium.Cartesian2(0, -25),
+              showBackground: true,
+              backgroundColor: Cesium.Color.BLACK.withAlpha(0.7),
+              backgroundPadding: new Cesium.Cartesian2(8, 4),
+              disableDepthTestDistance: Number.POSITIVE_INFINITY
+            }
+          });
+        }
       }
-    }
-  }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+    });
+  };
+  
+  // 延迟执行以确保所有模型都已加载
+  setTimeout(() => {
+    addPermanentLabels();
+  }, 2000);
 
   // 监听header面板切换事件
   watch(activePanel, (newPanel) => {

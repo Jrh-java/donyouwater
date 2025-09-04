@@ -446,3 +446,12 @@ export function setGateOpeningRate(deviceCode: string, devpoint: string, control
     method: 'get'
   });
 }
+
+// 获取闸门控制指令回调结果
+export function getGateControlCallback(deviceCode: string, devpoint: string) {
+  const key = `YN/0000/769834/answer/controlCmd/${deviceCode},${devpoint}`;
+  return request({
+    url: `/authApi/reservoir/device/deviceGateInfo/getCallback?key=${encodeURIComponent(key)}`,
+    method: 'get'
+  });
+}

@@ -40,9 +40,10 @@ const coordinate = [
 function drawWall(viewer) {
 
     let positions = Cesium.Cartesian3.fromDegreesArray(coordinate);
-    let color=Cesium.Color.fromBytes(0, 135, 255).withAlpha(0.7)
+    let color=Cesium.Color.fromBytes(255, 238, 0).withAlpha(0.5)
+    // rgba(255, 238, 0, 0.7)
     let maximumHeights ;
-      maximumHeights=new Array(positions.length).fill(160)
+      maximumHeights=new Array(positions.length).fill(60)
     // 绘制墙体
     let entity = viewer.entities.add({
       name: "立体墙效果",

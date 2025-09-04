@@ -52,7 +52,7 @@
           
           <div class="safety-stats">
             <div class="stats-divider"></div>
-            <div class="stats-row">
+            <!-- <div class="stats-row">
               <div class="stat-item">
                 <span class="label">综合安全状态</span>
                 <span class="value safe">-</span>
@@ -67,15 +67,32 @@
                 <span class="label">预警数</span>
                 <span class="value warning">0</span>
               </div>
-            </div>
+            </div> -->
             
             <div class="stats-divider"></div>
+            
+            <!-- 设备选择 -->
+            <div class="device-selector" style="margin: 10px; text-align: left;">
+              <el-form :inline="true">
+                <el-form-item label="选择位移设备" style="margin-left: 0;">
+                  <el-select v-model="selectedDeviceCode" placeholder="请选择设备" :teleported="false" style="width: 200px;">
+                    <el-option 
+                      v-for="device in deviceList" 
+                      :key="device.deviceCode" 
+                      :label="device.deviceName" 
+                      :value="device.deviceCode">
+                    </el-option>
+                  </el-select>
+                </el-form-item>
+              </el-form>
+            </div>
             
             <div class="monitoring-table">
               <DisplacementTable 
                 :height="250"
                 :show-pagination="false"
                 :filter-form="{ timeRange: '24h', direction: 'all' }"
+                :device-code="selectedDeviceCode"
               />
             </div>
           </div>
@@ -285,14 +302,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, computed, watch } from 'vue'
 import { ElButton, ElIcon, ElTreeSelect, ElTable, ElTableColumn } from 'element-plus'
 import { ArrowLeft, TrendCharts, Histogram, DataLine, DataBoard, Cloudy, Sunny, InfoFilled } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { useRouter } from 'vue-router'
 import DisplacementTable from '@/components/DisplacementTable.vue'
 import { getDamDirectoryListApi, getOsmoticPressureWeekMaxApi, type OsmoticPressureData } from '@/api/reservoir'
+import { getDeviceManagementPage } from '@/api/device'
 import { useStore } from '@/store/pinia'
+import { ElMessage } from 'element-plus'
 
 // 定义任务接口
 interface Task {
@@ -301,6 +320,13 @@ interface Task {
   time: string
   executor: string
   status: string
+}
+
+// 定义设备接口
+interface Device {
+  deviceCode: string
+  deviceName: string
+  [key: string]: any
 }
 
 // 定义props
@@ -322,7 +348,7 @@ const emit = defineEmits<{
 // 计算属性：表格数据
 const reservoirTableData = computed(() => [
   {
-    label: '水库名称',
+    label: '流域名称',
     value: props.reservoirData?.reservoirName || '火星一号水库大坝'
   },
   {
@@ -339,6 +365,10 @@ const reservoirTableData = computed(() => [
 const treeData = ref([])
 const selectedGateStation = ref('')
 const loading = ref(false)
+
+// 设备选择相关
+const deviceList = ref<Device[]>([])
+const selectedDeviceCode = ref('')
 
 // 图表引用
 const riverDisplacementChart = ref()
@@ -473,6 +503,29 @@ const fetchGateStationList = async () => {
     console.error('获取闸站目录列表失败:', error)
   } finally {
     loading.value = false
+  }
+}
+
+// 获取设备列表
+const fetchDeviceList = async () => {
+  try {
+    const params = {
+      page: 1,
+      limit: 100,
+      mcsType: 'displacement'
+    }
+    
+    const response = await getDeviceManagementPage(params)
+    if (response && (response as any).list) {
+      deviceList.value = (response as any).list
+      // 如果有设备且当前没有选中设备，默认选中第一个
+      if (deviceList.value.length > 0 && !selectedDeviceCode.value) {
+        selectedDeviceCode.value = deviceList.value[0].deviceCode
+      }
+    }
+  } catch (error) {
+    console.error('获取设备列表失败:', error)
+    ElMessage.error('获取设备列表失败')
   }
 }
 
@@ -999,6 +1052,14 @@ const initCharts = () => {
   }
 }
 
+// 监听设备选择变化
+watch(() => selectedDeviceCode.value, (newDeviceCode) => {
+  if (newDeviceCode) {
+    // 当设备代码变化时，可以在这里添加相关逻辑
+    console.log('设备已切换:', newDeviceCode)
+  }
+})
+
 onMounted(() => {
   setTimeout(() => {
     initCharts()
@@ -1006,6 +1067,9 @@ onMounted(() => {
   
   // 获取闸站目录列表
   fetchGateStationList()
+  
+  // 获取设备列表
+  fetchDeviceList()
 })
 
 onUnmounted(() => {

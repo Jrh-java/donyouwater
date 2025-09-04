@@ -70,13 +70,13 @@
               :height="250"
               :show-pagination="true"
               :filter-form="filterForm"
-              :gate-station-code="deviceData.gateStationCode || deviceData.code || ''"
+              :device-code=" deviceData.deviceCode || ''"
             />
-             <div class="legend-tooltip">
+             <!-- <div class="legend-tooltip">
               <p>1. 默认时间区间为近一月</p>
               <p>2. 可切换查看图表形式或列表形式，列表横坐标时间，纵坐标监测值，设置一级二级告警线</p>
               <p>3. 数据列表该列显示告警状态：正常，II级告警，I级告警</p>
-            </div>
+            </div> -->
           </div>
 
           <div v-if="activeTab === 'info'" class="info-tab">
@@ -171,7 +171,7 @@
 
 <script setup>
 import { ref, reactive, defineProps, defineEmits, computed } from 'vue';
-import DisplacementTable from '@/components/DisplacementTable.vue';
+import DisplacementTable from './DisplacementTable.vue';
 
 const props = defineProps({
   show: Boolean,

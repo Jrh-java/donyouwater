@@ -1,191 +1,299 @@
 <template>
   <div v-if="show" class="gate-control-modal-overlay" @click.self="closeModal">
+
     <div class="gate-control-modal">
       <!-- 弹窗头部 -->
       <div class="modal-header">
         <h3 class="modal-title">{{ modalTitle }}</h3>
         <button class="close-button" @click="closeModal">
-          <el-icon><Close /></el-icon>
+          <el-icon>
+            <Close />
+          </el-icon>
         </button>
       </div>
-      
-      <!-- 弹窗内容 -->
-      <div class="modal-content">
-        <el-row :gutter="20">
-          <!-- Left Side -->
-          <el-col :span="10" class="content-col">
-            <div class="column-header">
-              <span>闸门控制</span>
-            </div>
-            <div class="gate-internal-monitor">
-              <div class="gate-controls">
-                <el-button type="primary" @click="showConfirmationDialog('open')"
-                  :disabled="!gateExtInfo || !Array.isArray(gateExtInfo) || gateExtInfo.length === 0 || (gateExtInfo.some(info => String(info.isHandle) === '1.0'))">一键开闸</el-button>
-                  <div></div>
-                <el-button type="danger" @click="showConfirmationDialog('close')"
-                  :disabled="!gateExtInfo || !Array.isArray(gateExtInfo) || gateExtInfo.length === 0 || (gateExtInfo.some(info => String(info.isHandle) === '1.0'))">一键关闸</el-button>
-              </div>
-              <!-- 闸门信息显示 -->
-              <div class="gate-info-overlay">
-                <!-- 一号闸口信息（右侧） -->
-                <div class="gate-info gate-info-1">
-                  <div class="gate-info-title">一号闸口</div>
-                  <div class="gate-info-item">
-                    <span class="info-label">开度:</span>
-                    <span class="info-value">{{ gate1Info ? gate1Info.openingDegree : '0' }}%</span>
-                  </div>
-                  <div class="gate-info-item">
-                    <span class="info-label">高度:</span>
-                    <span class="info-value">{{ gate1Info ? gate1Info.gateHeight : '0' }}米</span>
-                  </div>
+      <el-tabs v-model="activeName" class="demo-tabs" @tab-click="handleClick">
+        <el-tab-pane label="闸门控制" name="first"> 
+          <!-- 弹窗内容 -->
+          <div class="modal-content">
+            <el-row :gutter="20">
+              <!-- Left Side -->
+              <el-col :span="10" class="content-col">
+                <div class="column-header">
+                  <span>闸门控制</span>
                 </div>
-                <!-- 二号闸口信息（左侧） -->
-                <div class="gate-info gate-info-2">
-                  <div class="gate-info-title">二号闸口</div>
-                  <div class="gate-info-item">
-                    <span class="info-label">开度:</span>
-                    <span class="info-value">{{ gate2Info ? gate2Info.openingDegree : '0' }}%</span>
+                <div class="gate-internal-monitor">
+                  <div class="gate-controls">
+                    <el-button type="primary" @click="showConfirmationDialog('open')"
+                      :disabled="!gateExtInfo || !Array.isArray(gateExtInfo) || gateExtInfo.length === 0 || (gateExtInfo.some(info => String(info.isHandle) === '1.0'))">一键开闸</el-button>
+                    <div></div>
+                    <el-button type="danger" @click="showConfirmationDialog('close')"
+                      :disabled="!gateExtInfo || !Array.isArray(gateExtInfo) || gateExtInfo.length === 0 || (gateExtInfo.some(info => String(info.isHandle) === '1.0'))">一键关闸</el-button>
                   </div>
-                  <div class="gate-info-item">
-                    <span class="info-label">高度:</span>
-                    <span class="info-value">{{ gate2Info ? gate2Info.gateHeight : '0' }}米</span>
+                  <!-- 闸门信息显示 -->
+                  <div class="gate-info-overlay">
+                    <!-- 一号闸口信息（右侧） -->
+                    <div class="gate-info gate-info-1">
+                      <div class="gate-info-title">一号闸口</div>
+                      <div class="gate-info-item">
+                        <span class="info-label">开度:</span>
+                        <span class="info-value">{{ gate1Info ? gate1Info.openingDegree : '0' }}%</span>
+                      </div>
+                      <div class="gate-info-item">
+                        <span class="info-label">高度:</span>
+                        <span class="info-value">{{ gate1Info ? gate1Info.gateHeight : '0' }}米</span>
+                      </div>
+                    </div>
+                    <!-- 二号闸口信息（左侧） -->
+                    <div class="gate-info gate-info-2">
+                      <div class="gate-info-title">二号闸口</div>
+                      <div class="gate-info-item">
+                        <span class="info-label">开度:</span>
+                        <span class="info-value">{{ gate2Info ? gate2Info.openingDegree : '0' }}%</span>
+                      </div>
+                      <div class="gate-info-item">
+                        <span class="info-label">高度:</span>
+                        <span class="info-value">{{ gate2Info ? gate2Info.gateHeight : '0' }}米</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-              <!-- 闸门站图片显示 -->
-              <img src="/src/assets/images/GateStation.jpg" alt="闸门站" class="gate-station-image" />
-              <img src="/src/assets/images/Gate.png" alt="闸门口1" class="gate-image gate-1"
-                :style="{ '--gate1-position': `${gate1Position}%` }" />
-              <img src="/src/assets/images/Gate.png" alt="闸门口2" class="gate-image gate-2"
-                :style="{ '--gate2-position': `${gate2Position}%` }" />
-            </div>
-            <el-descriptions title="闸门情况" :column="2" border class="gate-status-info">
-              <el-descriptions-item label="闸门控制">
-                <el-tag :type="currentGateInfo && String(currentGateInfo.isHandle) === '0.0' ? 'success' : 'warning'">
-                  {{ currentGateInfo && String(currentGateInfo.isHandle) === '0.0' ? '自动可远程' : '手动' }}
-                </el-tag>
-              </el-descriptions-item>
-              <el-descriptions-item label="最新时间">{{ currentGateInfo ? currentGateInfo.crtTime : '--' }}
-              </el-descriptions-item>
-              <el-descriptions-item label="河道液位">{{ gateExtInfo && gateExtInfo.length > 0 ? gateExtInfo[0].riverLevel : '--'
-                }}米
-              </el-descriptions-item>
-              <el-descriptions-item label="渠道液位">{{ gateExtInfo && gateExtInfo.length > 0 ? gateExtInfo[0].channelLevel :
-                '--' }}米
-              </el-descriptions-item>
-            </el-descriptions>
-            <!-- 闸口选择 -->
-            <div class="gate-port-selection" style="margin: 20px 0;">
-              <el-form-item label="选择闸口:" style="font-size: 16px;">
-                <el-select v-model="selectedGatePort" placeholder="请选择闸口" style="width: 200px;" :teleported="false"
-                   :disabled="!selectedGatePort"
-                  @change="handleGatePortChange">
-                  <el-option v-for="option in gatePortOptions" :key="option.value" :label="option.label"
-                    :value="option.value"></el-option>
-                </el-select>
-              </el-form-item>
-            </div>
+                  <!-- 闸门站图片显示 -->
+                  <img src="/src/assets/images/GateStation.jpg" alt="闸门站" class="gate-station-image" />
+                  <img src="/src/assets/images/Gate.png" alt="闸门口1" class="gate-image gate-1"
+                    :style="{ '--gate1-position': `${gate1Position}%` }" />
+                  <img src="/src/assets/images/Gate.png" alt="闸门口2" class="gate-image gate-2"
+                    :style="{ '--gate2-position': `${gate2Position}%` }" />
 
-            <!-- 闸口开度控制 -->
-            <div class="gate-opening-control" style="margin: 20px 0; text-align: left;">
-              <el-form :inline="true" :model="gateOpeningForm">
-                <el-form-item label="闸口开度:" style="font-size: 16px;">
-                  <el-input 
-                    v-model.number="gateOpeningForm.openingValue" 
-                    type="number" 
-                    :min="0" 
-                    :max="100" 
-                    placeholder="请输入开度"
-                    style="width: 200px;" 
-                    :disabled="!selectedGatePort"
-                    @input="handleOpeningValueInput"
-                  >
-                    <template #suffix>
-                      <span>%</span>
-                    </template>
-                  </el-input>
-                </el-form-item>
-                <el-form-item>
-                  <div style="display: flex; gap: 8px;">
+                  <!-- 一号闸口状态图片 -->
+                  <img v-show="gate1Info && gate1Info.controlStatus === '1'" src="/src/assets/images/gate-up.png"
+                    alt="闸门-开启" class="gate-status-up gate-1" />
+                  <img v-show="gate1Info && gate1Info.controlStatus === '2'" src="/src/assets/images/gate-down.png"
+                    alt="闸门-关闭" class="gate-status-down gate-1" />
+                  <img v-show="gate1Info && gate1Info.controlStatus === '3'" src="/src/assets/images/gate-stop.png"
+                    alt="闸门-停止" class="gate-status-stop gate-1" />
+
+                  <!-- 二号闸口状态图片 -->
+                  <img v-show="gate2Info && gate2Info.controlStatus === '1'" src="/src/assets/images/gate-up.png"
+                    alt="闸门-开启" class="gate-status-up gate-2" />
+                  <img v-show="gate2Info && gate2Info.controlStatus === '2'" src="/src/assets/images/gate-down.png"
+                    alt="闸门-关闭" class="gate-status-down gate-2" />
+                  <img v-show="gate2Info && gate2Info.controlStatus === '3'" src="/src/assets/images/gate-stop.png"
+                    alt="闸门-停止" class="gate-status-stop gate-2" />
+                </div>
+                <el-descriptions title="闸门情况" :column="2" border class="gate-status-info">
+                  <el-descriptions-item label="闸门控制">
+                    <el-tag
+                      :type="currentGateInfo && String(currentGateInfo.isHandle) === '0.0' ? 'success' : 'warning'">
+                      {{ currentGateInfo && String(currentGateInfo.isHandle) === '0.0' ? '自动可远程' : '手动' }}
+                    </el-tag>
+                  </el-descriptions-item>
+                  <el-descriptions-item label="最新时间">{{ currentGateInfo ? currentGateInfo.crtTime : '--' }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="河道液位">{{ gateExtInfo && gateExtInfo.length > 0 ?
+                    gateExtInfo[0].riverLevel : '--'
+                  }}米
+                  </el-descriptions-item>
+                  <el-descriptions-item label="渠道液位">{{ gateExtInfo && gateExtInfo.length > 0 ?
+                    gateExtInfo[0].channelLevel :
+                    '--' }}米
+                  </el-descriptions-item>
+                </el-descriptions>
+                <!-- 闸口选择和开度控制 -->
+                <div class="gate-control-section" style="margin: 20px 0;">
+                  <el-form :inline="true" :model="gateOpeningForm" style="display:flex">
+                    <el-form-item label="选择闸口:" style="font-size: 16px;">
+                      <el-select v-model="selectedGatePort" placeholder="请选择闸口" style="width: 200px;"
+                        :teleported="false" :disabled="!selectedGatePort" @change="handleGatePortChange">
+                        <el-option v-for="option in gatePortOptions" :key="option.value" :label="option.label"
+                          :value="option.value"></el-option>
+                      </el-select>
+                    </el-form-item>
+                    <el-form-item label="闸口开度:" style="font-size: 16px; margin-left: 20px;">
+                      <el-input v-model.number="gateOpeningForm.openingValue" type="number" :min="0" :max="100"
+                        placeholder="请输入开度" style="width: 200px;" :disabled="!selectedGatePort"
+                        @input="handleOpeningValueInput">
+                        <template #suffix>
+                          <span>%</span>
+                        </template>
+                      </el-input>
+                    </el-form-item>
+                  </el-form>
+
+                  <!-- 执行和停闸按钮 -->
+                  <div style="text-align: center; margin-top: 15px;">
                     <el-button type="primary" @click="showConfirmationDialog('opening')"
                       :disabled="!selectedGatePort || (currentGateInfo && String(currentGateInfo.isHandle) === '1.0') || gateOpeningForm.openingValue === null || gateOpeningForm.openingValue === undefined"
                       :loading="gateOpeningLoading">
                       执行
                     </el-button>
-                    <el-button type="warning" @click="stopGate"
+                    <el-button type="warning" @click="stopGate" style="margin-left: 10px;"
                       :disabled="!selectedGatePort || (currentGateInfo && String(currentGateInfo.isHandle) === '1.0')">停闸</el-button>
                   </div>
-                </el-form-item>
-              </el-form>
-            </div>
-          </el-col>
+                </div>
+              </el-col>
 
-          <!-- Divider -->
-          <el-col :span="1" class="divider-col">
-            <el-divider direction="vertical" class="custom-divider"></el-divider>
-          </el-col>
+              <!-- Divider -->
+              <el-col :span="1" class="divider-col">
+                <el-divider direction="vertical" class="custom-divider"></el-divider>
+              </el-col>
 
-          <!-- Right Side -->
-          <el-col :span="13" class="content-col">
-            <div class="column-header">
-              <span>实时视频</span>
-              <!-- 摄像枪选择下拉框 -->
-              <el-select v-model="selectedCameraDevice" placeholder="请选择摄像枪" style="width: 200px;"
-                :disabled="!cameraDevices.length" @change="handleCameraDeviceChange" :teleported="false">
-                <el-option v-for="device in cameraDevices" :key="device.deviceCode" :label="device.deviceName"
-                  :value="device.deviceCode"></el-option>
-              </el-select>
-            </div>
-            <div class="gate-external-monitor">
-              <!-- 视频播放区域 -->
-              <div class="video-display-area">
-                <video ref="videoElement" class="video-player" controls muted autoplay
-                  style="width: 100%; height: 450px; background-color: #000;">
-                  您的浏览器不支持视频播放
-                </video>
-                <div v-if="!videoUrl" class="video-placeholder">
-                  <div style="text-align: center; color: #999;">
-                    <div style="font-size: 48px; margin-bottom: 10px;">📹</div>
-                    <div style="font-size: 16px;">请选择摄像枪查看视频</div>
+              <!-- Right Side -->
+              <el-col :span="13" class="content-col">
+                <div class="column-header">
+                  <span>实时视频</span>
+                  <!-- 摄像枪选择下拉框 -->
+                  <el-select v-model="selectedCameraDevice" placeholder="请选择摄像枪" style="width: 200px;"
+                    :disabled="!cameraDevices.length" @change="handleCameraDeviceChange" :teleported="false">
+                    <el-option v-for="device in cameraDevices" :key="device.deviceCode" :label="device.deviceName"
+                      :value="device.deviceCode"></el-option>
+                  </el-select>
+                </div>
+                <div class="gate-external-monitor">
+                  <!-- 视频播放区域 -->
+                  <div class="video-display-area">
+                    <video ref="videoElement" class="video-player" controls muted autoplay
+                      style="width: 100%; height: 450px; background-color: #000;">
+                      您的浏览器不支持视频播放
+                    </video>
+                    <div v-if="!videoUrl" class="video-placeholder">
+                      <div style="text-align: center; color: #999;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">📹</div>
+                        <div style="font-size: 16px;">请选择摄像枪查看视频</div>
+                      </div>
+                    </div>
+                    <div class="video-status-overlay">
+                      <span v-if="connectTime">连接时间: {{ connectTime }}</span>
+                    </div>
+                  </div>
+                  <div style="text-align: left; margin-top: 5px;">
+                    <el-tag type="success"><el-icon>
+                        <CaretRight />
+                      </el-icon> 实时视频</el-tag>
                   </div>
                 </div>
-                <div class="video-status-overlay">
-                  <span v-if="connectTime">连接时间: {{ connectTime }}</span>
+
+                <el-card shadow="never" style="margin-top: 20px;">
+                  <template #header>
+                    <div class="card-header">
+                      <span>任务计划</span>
+                      <el-button type="primary" @click="showAddTaskDialog">添加任务</el-button>
+                    </div>
+                  </template>
+                  <el-table :data="taskList" style="width: 100%" height="200" v-loading="taskLoading">
+                    <el-table-column type="index" label="序号" width="80" align="center"></el-table-column>
+                    <el-table-column prop="taskType" label="任务类型" align="center">
+                      <template #default="scope">
+                        {{ getTaskTypeLabel(scope.row.taskType) }}
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="deviceCode" label="设备编号" align="center"></el-table-column>
+                    <el-table-column prop="id" label="任务ID" align="center"></el-table-column>
+                    <el-table-column label="操作" width="100" align="center">
+                      <template #default="scope">
+                        <el-button type="danger" link @click="deleteTask(scope.row)">删除</el-button>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                </el-card>
+              </el-col>
+            </el-row>
+          </div>
+        </el-tab-pane>
+        <el-tab-pane label="闸门详情" name="second">
+          <!-- 安全概况 -->
+          <div class="safety-overview">
+            <div class="section-title">安全概况</div>
+            
+            <div class="safety-content">
+              <div class="safety-header">
+                <div class="reservoir-table">
+                  <el-table :data="reservoirTableData" border style="width: 100%">
+                    <el-table-column prop="label" label="项目" width="120" />
+                    <el-table-column prop="value" label="内容" />
+                  </el-table>
                 </div>
               </div>
-              <div style="text-align: left; margin-top: 5px;">
-                <el-tag type="success"><el-icon>
-                    <CaretRight />
-                  </el-icon> 实时视频</el-tag>
+              
+              <div class="safety-stats">
+                <div class="stats-divider"></div>
+           
+                
+                <div class="stats-divider"></div>
+                
+                <!-- 设备选择 -->
+                <div class="device-selector" style="margin: 10px; text-align: left;">
+                  <el-form :inline="true">
+                    <el-form-item label="选择位移设备" style="margin-left: 0;">
+                      <el-select v-model="selectedDeviceCode" placeholder="请选择设备" :teleported="false" style="width: 200px;">
+                        <el-option 
+                          v-for="device in deviceList" 
+                          :key="device.deviceCode" 
+                          :label="device.deviceName" 
+                          :value="device.deviceCode">
+                        </el-option>
+                      </el-select>
+                    </el-form-item>
+                  </el-form>
+                </div>
+                
+                <div class="monitoring-table">
+                  <DisplacementTable 
+                    :height="250"
+                    :show-pagination="false"
+                    :filter-form="{ timeRange: '24h', direction: 'all' }"
+                    :device-code="selectedDeviceCode"
+                  />
+                </div>
               </div>
             </div>
+          </div>
 
-            <el-card shadow="never" style="margin-top: 20px;">
-              <template #header>
+          <!-- 渗压和渗流量监测 -->
+          <div class="seepage-section">
+            <div class="seepage-cards">
+              <div class="seepage-card-with-chart">
                 <div class="card-header">
-                  <span>任务计划</span>
-                  <el-button type="primary" @click="showAddTaskDialog">添加任务</el-button>
+                  <div class="card-title">
+                    <el-icon class="card-icon"><Histogram /></el-icon>
+                    <span>渗压监测</span>
+                  </div>
+                  <el-button type="text" class="detail-btn" @click="gotoSeepage">查看详情</el-button>
                 </div>
-              </template>
-              <el-table :data="taskList" style="width: 100%" height="200" v-loading="taskLoading">
-                <el-table-column type="index" label="序号" width="80" align="center"></el-table-column>
-                <el-table-column prop="taskType" label="任务类型" align="center">
-                  <template #default="scope">
-                    {{ getTaskTypeLabel(scope.row.taskType) }}
-                  </template>
-                </el-table-column>
-                <el-table-column prop="deviceCode" label="设备编号" align="center"></el-table-column>
-                <el-table-column prop="id" label="任务ID" align="center"></el-table-column>
-                <el-table-column label="操作" width="100" align="center">
-                  <template #default="scope">
-                    <el-button type="danger" link @click="deleteTask(scope.row)">删除</el-button>
-                  </template>
-                </el-table-column>
-              </el-table>
-            </el-card>
-          </el-col>
-        </el-row>
-      </div>
+                <div class="card-content">
+                  <div class="status-info">
+
+                  </div>
+                  <div class="chart-title">渗压值 (kPa)</div>
+                  <div ref="seepagePressureChart" class="chart" style="height:300px"></div>
+                </div>
+              </div>
+
+              <div class="seepage-card-with-chart">
+                <div class="card-header">
+                  <div class="card-title">
+                    <el-icon class="card-icon"><DataLine /></el-icon>
+                    <span>渗流量监测</span>
+                  </div>
+                  <el-button type="text" class="detail-btn" @click="gotoFlow">查看详情</el-button>
+                </div>
+                <div class="card-content">
+            
+                  <div class="chart-title">渗流量值 (L/s)</div>
+                  <div class="no-device-tip" style="display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    font-size: 18px;
+    margin-top: 15%;">
+                    <el-icon class="tip-icon" style="margin-right: 8px; font-size: 20px;"><InfoFilled /></el-icon>
+                    <span>暂未接入该类型设备</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </el-tab-pane>
+      </el-tabs>
+
     </div>
 
     <!-- Confirmation Dialog -->
@@ -222,15 +330,25 @@
       </template>
     </el-dialog>
   </div>
+
 </template>
 
 <script setup>
-import { ref, watch, computed, reactive, onMounted, onBeforeUnmount } from 'vue';
-import { Picture, VideoCamera, CaretRight, Close } from '@element-plus/icons-vue';
+import { ref, watch, computed, reactive, onMounted, onBeforeUnmount,nextTick } from 'vue';
+import { Picture, VideoCamera, CaretRight, Close, Histogram, DataLine, InfoFilled } from '@element-plus/icons-vue';
 import { ElMessage, ElDialog, ElInput, ElButton, ElDivider } from 'element-plus';
-import { gateOnOrOff, getMonitorDevicesByGateStationCodeApi, sendDeviceCommandApi, getDeviceManagementInfo, getGateExtInfo, getGateTaskList, taskSend, setGateOpeningRate } from '@/api/reservoir';
+import { gateOnOrOff, getMonitorDevicesByGateStationCodeApi, sendDeviceCommandApi, getDeviceManagementInfo, getGateExtInfo, getGateTaskList, taskSend, setGateOpeningRate, getGateControlCallback, getOsmoticPressureWeekMaxApi } from '@/api/reservoir';
+import { getDeviceManagementPage } from '@/api/device';
+import DisplacementTable from '@/components/DisplacementTable.vue';
 import flvjs from 'flv.js';
+import * as echarts from 'echarts';
+import { useRouter } from 'vue-router';
 
+const router = useRouter();
+
+const handleClick = (tab) => {
+  activeName.value = tab.name;
+};
 const props = defineProps({
   show: {
     type: Boolean,
@@ -245,6 +363,8 @@ const props = defineProps({
     default: ''
   }
 });
+
+const activeName = ref('first');
 
 const emit = defineEmits(['close']);
 
@@ -275,7 +395,7 @@ const gate2Position = ref(-45); // 闸门2位置（0%开度时为-45%）
 // 闸口选择
 const selectedGatePort = ref('');
 const gatePortOptions = ref([
-  { label: '一号闸口', value: 'IRDA.DEVICE.GATE.OPENING' },
+  { label: '一号闸口', value: 'IRDA1.DEVICE.GATE.OPENING' },
   { label: '二号闸口', value: 'IRDA2.DEVICE.GATE.OPENING' }
 ]);
 
@@ -322,10 +442,33 @@ const userAnswer = ref('');
 const mathProblem = ref({ question: '', answer: 0 });
 const pendingAction = ref('');
 
+// 安全概况相关
+const deviceList = ref([]);
+const selectedDeviceCode = ref('');
+
+// 渗压监测相关
+const seepagePressureChart = ref();
+
+// 计算属性：表格数据
+const reservoirTableData = computed(() => [
+  {
+    label: '流域名称',
+    value: '火星一号水库大坝'
+  },
+  {
+    label: '工程地址',
+    value: '火星xxxx市xx县xx镇'
+  },
+  {
+    label: '管理单位',
+    value: '火星水库管理所'
+  }
+]);
+
 // 计算属性：获取一号闸口信息
 const gate1Info = computed(() => {
   if (!gateExtInfo.value || !Array.isArray(gateExtInfo.value)) return null;
-  return gateExtInfo.value.find(item => item.devpoint === 'IRDA.DEVICE.GATE.OPENING');
+  return gateExtInfo.value.find(item => item.devpoint === 'IRDA1.DEVICE.GATE.OPENING');
 });
 
 // 计算属性：获取二号闸口信息
@@ -352,7 +495,7 @@ const updateGatePositions = (extInfo) => {
 
   // 找到对应的闸门信息并更新位置
   extInfo.forEach(item => {
-    if (item.devpoint === 'IRDA.DEVICE.GATE.OPENING') {
+    if (item.devpoint === 'IRDA1.DEVICE.GATE.OPENING') {
       // 闸门1
       gate1Position.value = calculateGatePosition(item.openingDegree || 0);
     } else if (item.devpoint === 'IRDA2.DEVICE.GATE.OPENING') {
@@ -423,13 +566,27 @@ const stopGateExtInfoTimer = () => {
   }
 };
 
+// 获取控制设备编码
+const fetchControlDeviceCode = async (gateStationCode) => {
+  try {
+    // 获取设备管理信息（设备类别5）
+    const deviceInfo = await getDeviceManagementInfo(gateStationCode, 5);
+    if (deviceInfo && deviceInfo.deviceCode) {
+      controlDeviceCode.value = deviceInfo.deviceCode;
+      console.log('获取到控制设备编码:', deviceInfo.deviceCode);
+    }
+  } catch (error) {
+    console.error('获取控制设备编码失败:', error);
+  }
+};
+
 // 处理闸口选择变化
 const handleGatePortChange = (selectedPort) => {
   if (!gateExtInfo.value || !Array.isArray(gateExtInfo.value)) {
     currentGateInfo.value = null;
     return;
   }
-  
+
   // 根据选择的闸口找到对应的闸门信息
   const gateInfo = gateExtInfo.value.find(item => item.devpoint === selectedPort);
   if (gateInfo) {
@@ -447,10 +604,10 @@ const generateMathProblem = () => {
   const num2 = Math.floor(Math.random() * 20) + 1;
   const operators = ['+', '-'];
   const operator = operators[Math.floor(Math.random() * operators.length)];
-  
+
   let answer;
   let question;
-  
+
   switch (operator) {
     case '+':
       answer = num1 + num2;
@@ -461,7 +618,7 @@ const generateMathProblem = () => {
       question = `${num1} - ${num2} = ?`;
       break;
   }
-  
+
   mathProblem.value = { question, answer };
 };
 
@@ -484,7 +641,7 @@ const showConfirmationDialog = (action) => {
 const handleConfirm = async () => {
   if (parseInt(userAnswer.value) === mathProblem.value.answer) {
     dialogVisible.value = false;
-    
+
     try {
       if (pendingAction.value === 'open') {
         await openGateLogic();
@@ -512,41 +669,88 @@ const handleCancel = () => {
 
 // 开闸逻辑
 const openGateLogic = async () => {
-  if (!selectedDamNode.value?.gateStationCode) {
-    ElMessage.error('未选择闸站');
+  console.log('执行全部开闸逻辑...');
+  if (!controlDeviceCode.value) {
+    ElMessage.error('缺少必要的控制参数');
+    return;
+  }
+
+  if (!gateExtInfo.value || !Array.isArray(gateExtInfo.value)) {
+    ElMessage.error('未获取到闸门信息');
     return;
   }
 
   try {
-    const result = await gateOnOrOff(selectedDamNode.value.gateStationCode, 1);
-    if (result) {
-      ElMessage.success('开闸指令发送成功');
-    } else {
-      ElMessage.error('开闸指令发送失败');
+    // 获取所有闸口信息
+    const gate1Info = gateExtInfo.value.find(item => item.devpoint === 'IRDA1.DEVICE.GATE.OPENING');
+    const gate2Info = gateExtInfo.value.find(item => item.devpoint === 'IRDA2.DEVICE.GATE.OPENING');
+
+    // 先开一号闸口
+    if (gate1Info) {
+      console.log('开启一号闸口...');
+      let devpoint1 = 'IRDA1.DEVICE.GATE.PROGRESS';
+      await setGateOpeningRate(controlDeviceCode.value, devpoint1, '100');
+      console.log('一号闸口开启成功');
     }
+
+    // 等待1秒
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // 再开二号闸口
+    if (gate2Info) {
+      console.log('开启二号闸口...');
+      let devpoint2 = 'IRDA2.DEVICE.GATE.PROGRESS';
+      await setGateOpeningRate(controlDeviceCode.value, devpoint2, '100');
+      console.log('二号闸口开启成功');
+    }
+
+    ElMessage.success('全部开闸操作成功');
   } catch (error) {
-    console.error('开闸操作失败:', error);
-    ElMessage.error('开闸操作失败');
+    console.error('全部开闸操作失败:', error);
+    ElMessage.error('全部开闸操作失败');
   }
 };
 
 // 关闸逻辑
 const closeGateLogic = async () => {
-  if (!selectedDamNode.value?.gateStationCode) {
-    ElMessage.error('未选择闸站');
+  console.log('执行全部关闸逻辑...');
+  if (!controlDeviceCode.value) {
+    ElMessage.error('缺少必要的控制参数');
+    return;
+  }
+
+  if (!gateExtInfo.value || !Array.isArray(gateExtInfo.value)) {
+    ElMessage.error('未获取到闸门信息');
     return;
   }
 
   try {
-    const result = await gateOnOrOff(selectedDamNode.value.gateStationCode, 0);
-    if (result) {
-      ElMessage.success('关闸指令发送成功');
-    } else {
-      ElMessage.error('关闸指令发送失败');
+    // 获取所有闸口信息
+    const gate1Info = gateExtInfo.value.find(item => item.devpoint === 'IRDA1.DEVICE.GATE.OPENING');
+    const gate2Info = gateExtInfo.value.find(item => item.devpoint === 'IRDA2.DEVICE.GATE.OPENING');
+
+    // 同时关闭所有闸口
+    const closePromises = [];
+
+    if (gate1Info) {
+      console.log('关闭一号闸口...');
+      let devpoint1 = 'IRDA1.DEVICE.GATE.PROGRESS';
+      closePromises.push(setGateOpeningRate(controlDeviceCode.value, devpoint1, '0'));
     }
+
+    if (gate2Info) {
+      console.log('关闭二号闸口...');
+      let devpoint2 = 'IRDA2.DEVICE.GATE.PROGRESS';
+      closePromises.push(setGateOpeningRate(controlDeviceCode.value, devpoint2, '0'));
+    }
+
+    // 等待所有关闸操作完成
+    await Promise.all(closePromises);
+
+    ElMessage.success('全部关闸操作成功');
   } catch (error) {
-    console.error('关闸操作失败:', error);
-    ElMessage.error('关闸操作失败');
+    console.error('全部关闸操作失败:', error);
+    ElMessage.error('全部关闸操作失败');
   }
 };
 
@@ -567,14 +771,44 @@ const setGateOpeningLogic = async () => {
     return;
   }
 
+  if (!controlDeviceCode.value) {
+    ElMessage.warning('未获取到设备编码');
+    return;
+  }
+
   try {
     gateOpeningLoading.value = true;
-    const result = await setGateOpeningRate(selectedGatePort.value, gateOpeningForm.openingValue);
-    if (result) {
-      ElMessage.success('设置开度指令发送成功');
+
+    // 根据选中的闸口确定devpoint
+    let devpoint = '';
+    if (selectedGatePort.value === 'IRDA1.DEVICE.GATE.OPENING') {
+      devpoint = 'IRDA1.DEVICE.GATE.PROGRESS';
+    } else if (selectedGatePort.value === 'IRDA2.DEVICE.GATE.OPENING') {
+      devpoint = 'IRDA2.DEVICE.GATE.PROGRESS';
     } else {
-      ElMessage.error('设置开度指令发送失败');
+      ElMessage.error('无效的闸口选择');
+      return;
     }
+
+    // 调用封装的接口发送控制指令
+    await setGateOpeningRate(controlDeviceCode.value, devpoint, gateOpeningForm.openingValue.toString());
+
+    // 检查指令发送结果
+    try {
+      const callbackResult = await getGateControlCallback(controlDeviceCode.value, devpoint);
+      if (callbackResult === "1") {
+        ElMessage.success('闸口开度控制指令发送成功');
+      } else {
+        ElMessage.error('闸口开度控制指令发送失败');
+      }
+    } catch (callbackError) {
+      console.error('获取指令回调结果失败:', callbackError);
+      ElMessage.warning('指令已发送，但无法确认执行状态');
+    }
+
+    // 清空输入框
+    gateOpeningForm.openingValue = null;
+
   } catch (error) {
     console.error('设置开度操作失败:', error);
     ElMessage.error('设置开度操作失败');
@@ -590,13 +824,18 @@ const stopGate = async () => {
     return;
   }
 
+  if (!controlDeviceCode.value) {
+    ElMessage.error('缺少必要的控制参数');
+    return;
+  }
+
   try {
-    const result = await sendDeviceCommandApi(selectedGatePort.value, 'STOP');
-    if (result) {
-      ElMessage.success('停闸指令发送成功');
-    } else {
-      ElMessage.error('停闸指令发送失败');
-    }
+    const stopPayload = {
+      devpoint: selectedGatePort.value,
+      controlVal: '3' // 停止
+    };
+    await gateOnOrOff(controlDeviceCode.value, JSON.stringify(stopPayload));
+    ElMessage.success('停闸操作成功');
   } catch (error) {
     console.error('停闸操作失败:', error);
     ElMessage.error('停闸操作失败');
@@ -618,11 +857,11 @@ const handleOpeningValueInput = (value) => {
 const fetchCameraDevices = async (gateStationCode) => {
   try {
     const devices = await getMonitorDevicesByGateStationCodeApi(gateStationCode);
-    
+
     if (devices && Array.isArray(devices)) {
       cameraDevices.value = devices;
       console.log('获取到摄像设备:', devices.length, '个');
-      
+
       // 如果有设备且当前没有选中设备，自动选择第一个
       if (devices.length > 0 && !selectedCameraDevice.value) {
         selectedCameraDevice.value = devices[0].deviceCode;
@@ -641,7 +880,7 @@ const fetchCameraDevices = async (gateStationCode) => {
 // 处理摄像设备变化
 const handleCameraDeviceChange = (deviceCode) => {
   if (!deviceCode) return;
-  
+
   console.log('切换摄像设备:', deviceCode);
   sendControlCommand(deviceCode);
 };
@@ -674,7 +913,7 @@ const sendControlCommand = async (deviceCode) => {
 
       // 停止当前播放
       stopVideo();
-      
+
       // 开始播放视频
       setTimeout(() => {
         initFLVPlayer(flvUrl);
@@ -801,7 +1040,7 @@ const initFLVPlayer = (url) => {
 // 清理资源
 const cleanup = () => {
   console.log('清理FLV播放器资源');
-  
+
   if (flvPlayer.value) {
     try {
       if (flvPlayer.value.type === 'FlvPlayer') {
@@ -816,7 +1055,7 @@ const cleanup = () => {
       flvPlayer.value = null;
     }
   }
-  
+
   if (videoElement.value) {
     try {
       videoElement.value.pause();
@@ -826,7 +1065,7 @@ const cleanup = () => {
       console.error('清理视频元素时出错:', error);
     }
   }
-  
+
   isPlaying.value = false;
   connectionStatus.value = '未连接';
   connectTime.value = '';
@@ -848,7 +1087,7 @@ const stopVideo = () => {
       console.error('停止视频播放失败:', error);
     }
   }
-  
+
   isPlaying.value = false;
   connectionStatus.value = '未连接';
   connectTime.value = '';
@@ -871,6 +1110,137 @@ const fetchTaskList = async (gateStationCode) => {
   } finally {
     taskLoading.value = false;
   }
+};
+
+// 获取设备列表
+const fetchDeviceList = async () => {
+  try {
+    const params = {
+      page: 1,
+      limit: 100,
+      mcsType: 'displacement'
+    };
+    
+    const response = await getDeviceManagementPage(params);
+    if (response && response.list) {
+      deviceList.value = response.list;
+      // 如果有设备且当前没有选中设备，默认选中第一个
+      if (deviceList.value.length > 0 && !selectedDeviceCode.value) {
+        selectedDeviceCode.value = deviceList.value[0].deviceCode;
+      }
+    }
+  } catch (error) {
+    console.error('获取设备列表失败:', error);
+  }
+};
+
+// 获取渗压数据
+const fetchOsmoticPressureData = async (gateStationCode) => {
+  try {
+    const data = await getOsmoticPressureWeekMaxApi(gateStationCode);
+    updateSeepagePressureChart(data);
+  } catch (error) {
+    console.error('获取渗压数据失败:', error);
+  }
+};
+
+// 更新渗压图表
+const updateSeepagePressureChart = (data) => {
+  if (seepagePressureChart.value) {
+    const chart = echarts.getInstanceByDom(seepagePressureChart.value) || echarts.init(seepagePressureChart.value);
+    
+    // 如果没有数据，显示暂无数据
+    if (!data || data.length === 0) {
+      const option = {
+        title: {
+          text: '暂无数据',
+          left: 'center',
+          top: 'middle',
+          textStyle: {
+            color: '#999',
+            fontSize: 16
+          }
+        },
+        grid: { top: 20, right: 20, bottom: 40, left: 40 },
+        xAxis: {
+          type: 'category',
+          data: [],
+          axisLine: { lineStyle: { color: '#999' } },
+          axisTick: { show: false },
+          axisLabel: { color: '#666' }
+        },
+        yAxis: {
+          type: 'value',
+          axisLine: { lineStyle: { color: '#999' } },
+          splitLine: { lineStyle: { color: '#e4e7ed' } },
+          axisLabel: { color: '#666' }
+        },
+        series: [{
+          data: [],
+          type: 'line'
+        }]
+      };
+      chart.setOption(option);
+      return;
+    }
+    
+    // 处理数据：提取日期（MM-DD格式）和渗压值
+    const dates = data.map(item => {
+      const date = new Date(item.daily);
+      return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    });
+    const pressureValues = data.map(item => item.maxWaterPressure);
+    
+    const option = {
+      title: {
+        text: '',
+        show: false
+      },
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        textStyle: { color: '#fff' },
+        formatter: function(params) {
+          return `${params[0].name}<br/>渗压值: ${params[0].value}kPa`;
+        }
+      },
+      grid: { top: 20, right: 20, bottom: 40, left: 40 },
+      xAxis: {
+        type: 'category',
+        data: dates,
+        axisLine: { lineStyle: { color: '#999' } },
+        axisTick: { show: false },
+        axisLabel: { color: '#666' }
+      },
+      yAxis: {
+        type: 'value',
+        axisLine: { lineStyle: { color: '#999' } },
+        splitLine: { lineStyle: { color: '#e4e7ed' } },
+        axisLabel: { color: '#666' }
+      },
+      series: [{
+        data: pressureValues,
+        type: 'line',
+        smooth: true,
+        itemStyle: { color: '#409eff' },
+        lineStyle: { color: '#409eff', width: 2 },
+        symbol: 'circle',
+        symbolSize: 6
+      }]
+    };
+    
+    chart.setOption(option);
+  }
+};
+
+// 跳转到渗压详情页面
+const gotoSeepage = () => {
+  router.push('/main/gate/seepage');
+};
+
+// 跳转到渗流量详情页面
+const gotoFlow = () => {
+  router.push('/main/gate/flow');
 };
 
 // 获取任务类型标签
@@ -909,7 +1279,7 @@ const confirmAddTask = async () => {
       gateStationCode: selectedDamNode.value.gateStationCode,
       taskType: addTaskForm.taskType
     });
-    
+
     if (result) {
       ElMessage.success('任务添加成功');
       showAddTaskDialogVisible.value = false;
@@ -947,9 +1317,19 @@ watch(() => props.show, (newShow) => {
   if (newShow && props.gateStationCode) {
     // 弹窗打开时，初始化数据
     fetchGateExtendedInfo(props.gateStationCode);
+    fetchControlDeviceCode(props.gateStationCode);
     startGateExtInfoTimer(props.gateStationCode);
     fetchCameraDevices(props.gateStationCode);
     fetchTaskList(props.gateStationCode);
+    fetchDeviceList();
+    fetchOsmoticPressureData(props.gateStationCode);
+    
+    // 初始化图表
+    nextTick(() => {
+      if (seepagePressureChart.value) {
+        updateSeepagePressureChart([]);
+      }
+    });
   } else {
     // 弹窗关闭时，清理资源
     stopGateExtInfoTimer();
@@ -1015,7 +1395,7 @@ onBeforeUnmount(() => {
   padding: 4px;
   border-radius: 4px;
   transition: all 0.2s;
-  
+
   &:hover {
     color: #409eff;
     background: #ecf5ff;
@@ -1041,7 +1421,7 @@ onBeforeUnmount(() => {
   margin-bottom: 20px;
   padding-bottom: 10px;
   border-bottom: 2px solid #e4e7ed;
-  
+
   span {
     font-size: 18px;
     font-weight: 600;
@@ -1079,7 +1459,7 @@ onBeforeUnmount(() => {
 
   .gate-info-overlay {
     position: absolute;
-    top: 65px;
+    top: 10%;
     left: 0;
     right: 45px;
     z-index: 10;
@@ -1124,11 +1504,13 @@ onBeforeUnmount(() => {
     }
 
     .gate-info-1 {
-      order: 2; /* 一号闸口显示在右侧 */
+      order: 2;
+      /* 一号闸口显示在右侧 */
     }
 
     .gate-info-2 {
-      order: 1; /* 二号闸口显示在左侧 */
+      order: 1;
+      /* 二号闸口显示在左侧 */
     }
   }
 
@@ -1157,6 +1539,26 @@ onBeforeUnmount(() => {
       /* 水平居中 + 垂直移动 */
     }
   }
+
+  // 闸门状态图片样式
+  .gate-status-up,
+  .gate-status-down,
+  .gate-status-stop {
+    position: absolute;
+    width: 30px;
+
+    &.gate-1 {
+      top: 43%;
+      left: 54%;
+      transform: translateX(-50%);
+    }
+
+    &.gate-2 {
+      top: 43%;
+      left: 36%;
+      transform: translateX(-50%);
+    }
+  }
 }
 
 .gate-status-info {
@@ -1181,7 +1583,7 @@ onBeforeUnmount(() => {
     background: #000;
     border-radius: 8px;
     overflow: hidden;
-    
+
     .video-placeholder {
       position: absolute;
       top: 0;
@@ -1193,7 +1595,7 @@ onBeforeUnmount(() => {
       justify-content: center;
       background: #000;
     }
-    
+
     .video-status-overlay {
       position: absolute;
       top: 10px;
@@ -1211,7 +1613,7 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  
+
   span {
     color: #303133;
     font-weight: 600;
@@ -1221,5 +1623,215 @@ onBeforeUnmount(() => {
 /* Element Plus 默认主题样式 */
 :deep(.el-divider--vertical) {
   border-color: #e4e7ed;
+}
+:deep(.el-tabs__nav-scroll){
+  padding-left: 25px;
+}
+/* 安全概况样式 */
+.safety-overview {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+
+  .section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #303133;
+    margin-bottom: 16px;
+  }
+
+  .safety-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+
+    .reservoir-table {
+      width: 100%;
+      margin-bottom: 20px;
+    }
+  }
+
+  .safety-stats {
+    .stats-divider {
+      width: 100%;
+      height: 1px;
+      background-color: #e4e7ed;
+      margin: 15px 0;
+    }
+
+    .stats-row {
+      display: flex;
+      gap: 40px;
+      margin-bottom: 20px;
+      align-items: center;
+      position: relative;
+      justify-content: space-around;
+      
+      .stat-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        .label {
+          font-size: 22px;
+          color: #909399;
+        }
+
+        .value {
+          font-size: 18px;
+          font-weight: 600;
+
+          &.safe {
+            color: #67c23a;
+          }
+
+          &.alert {
+            color: #f56c6c;
+          }
+
+          &.warning {
+            color: #e6a23c;
+          }
+        }
+      }
+
+      .stat-divider-vertical {
+        width: 1px;
+        height: 40px;
+        background-color: #e4e7ed;
+      }
+    }
+
+    .monitoring-table {
+    margin-top: 16px;
+    width: 800px;
+  }
+}
+
+// 渗压渗流量区域样式
+.seepage-section {
+  margin-top: 24px;
+  
+  .seepage-cards {
+    display: flex;
+    gap: 24px;
+    
+    .seepage-card-with-chart {
+      flex: 1;
+      background: #ffffff;
+      border: 1px solid #e4e7ed;
+      border-radius: 8px;
+      overflow: hidden;
+      
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 20px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #e4e7ed;
+        
+        .card-title {
+          font-size: 16px;
+          font-weight: 600;
+          color: #303133;
+          margin: 0;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          
+          .el-icon {
+            color: #409eff;
+          }
+        }
+        
+        .detail-btn {
+          padding: 6px 12px;
+          font-size: 12px;
+          border-radius: 4px;
+          background: #409eff;
+          color: white;
+          border: none;
+          cursor: pointer;
+          transition: all 0.2s;
+          
+          &:hover {
+            background: #337ecc;
+          }
+        }
+      }
+      
+      .card-content {
+        padding: 20px;
+        
+        .status-info {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 16px;
+          
+          .status-item {
+            text-align: center;
+            
+            .label {
+              font-size: 12px;
+              color: #909399;
+              margin-bottom: 4px;
+            }
+            
+            .value {
+              font-size: 18px;
+              font-weight: 600;
+              
+              &.safe {
+                color: #67c23a;
+              }
+              
+              &.alert {
+                color: #e6a23c;
+              }
+              
+              &.warning {
+                color: #f56c6c;
+              }
+            }
+          }
+        }
+        
+        .chart-title {
+          font-size: 14px;
+          color: #606266;
+          margin-bottom: 12px;
+          text-align: center;
+        }
+        
+        .chart {
+          width: 100%;
+          height: 200px;
+        }
+        
+        .no-device-tip {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          height: 200px;
+          color: #909399;
+          
+          .el-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+            color: #c0c4cc;
+          }
+          
+          .tip-text {
+            font-size: 14px;
+          }
+        }
+      }
+    }
+  }
+}
 }
 </style>
