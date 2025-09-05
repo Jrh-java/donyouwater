@@ -12,7 +12,100 @@
         </button>
       </div>
       <el-tabs v-model="activeName" class="demo-tabs" @tab-click="handleClick">
-        <el-tab-pane label="闸门控制" name="first"> 
+        <el-tab-pane label="闸门详情" name="second">
+          <div class="gate-details-content">
+            <!-- 安全概况 -->
+            <div class="safety-overview">
+              <!-- <div class="section-title">安全概况</div> -->
+
+              <div class="safety-content">
+                <div class="safety-header">
+                  <!-- <div class="reservoir-table">
+                  <el-table :data="reservoirTableData" border style="width: 100%">
+                    <el-table-column prop="label" label="项目" width="120" />
+                    <el-table-column prop="value" label="内容" />
+                  </el-table>
+                </div> -->
+                </div>
+
+                <div class="safety-stats">
+
+
+                  <!-- 设备选择 -->
+                  <div class="device-selector" style="margin: 10px; text-align: left;">
+                    <el-form :inline="true">
+                      <el-form-item label="选择位移设备" style="margin-left: 0;">
+                        <el-select v-model="selectedDeviceCode" placeholder="请选择设备" :teleported="false"
+                          style="width: 200px;">
+                          <el-option v-for="device in deviceList" :key="device.deviceCode" :label="device.deviceName"
+                            :value="device.deviceCode">
+                          </el-option>
+                        </el-select>
+                      </el-form-item>
+                    </el-form>
+                  </div>
+
+                  <div class="monitoring-table">
+                    <DisplacementTable :height="250" :show-pagination="false"
+                      :filter-form="{ timeRange: '24h', direction: 'all' }" :device-code="selectedDeviceCode" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 渗压和渗流量监测 -->
+            <div class="seepage-section">
+              <div class="seepage-cards">
+                <div class="seepage-card-with-chart">
+                  <div class="card-header">
+                    <div class="card-title">
+                      <el-icon class="card-icon">
+                        <Histogram />
+                      </el-icon>
+                      <span>渗压监测</span>
+                    </div>
+                    <el-button type="text" class="detail-btn" @click="gotoSeepage">查看详情</el-button>
+                  </div>
+                  <div class="card-content">
+                    <div class="status-info">
+
+                    </div>
+                    <div class="chart-title">渗压值 (kPa)</div>
+                    <div ref="seepagePressureChart" class="chart" style="height:300px"></div>
+                  </div>
+                </div>
+
+                <div class="seepage-card-with-chart">
+                  <div class="card-header">
+                    <div class="card-title">
+                      <el-icon class="card-icon">
+                        <DataLine />
+                      </el-icon>
+                      <span>渗流量监测</span>
+                    </div>
+                    <el-button type="text" class="detail-btn" @click="gotoFlow">查看详情</el-button>
+                  </div>
+                  <div class="card-content">
+
+                    <div class="chart-title">渗流量值 (L/s)</div>
+                    <div class="no-device-tip" style="display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    font-size: 18px;
+    margin-top: 15%;">
+                      <el-icon class="tip-icon" style="margin-right: 8px; font-size: 20px;">
+                        <InfoFilled />
+                      </el-icon>
+                      <span>暂未接入该类型设备</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </el-tab-pane>
+        <el-tab-pane label="闸门控制" name="first">
           <!-- 弹窗内容 -->
           <div class="modal-content">
             <el-row :gutter="20">
@@ -90,7 +183,7 @@
                   </el-descriptions-item>
                   <el-descriptions-item label="河道液位">{{ gateExtInfo && gateExtInfo.length > 0 ?
                     gateExtInfo[0].riverLevel : '--'
-                  }}米
+                    }}米
                   </el-descriptions-item>
                   <el-descriptions-item label="渠道液位">{{ gateExtInfo && gateExtInfo.length > 0 ?
                     gateExtInfo[0].channelLevel :
@@ -198,100 +291,7 @@
             </el-row>
           </div>
         </el-tab-pane>
-        <el-tab-pane label="闸门详情" name="second">
-          <!-- 安全概况 -->
-          <div class="safety-overview">
-            <div class="section-title">安全概况</div>
-            
-            <div class="safety-content">
-              <div class="safety-header">
-                <div class="reservoir-table">
-                  <el-table :data="reservoirTableData" border style="width: 100%">
-                    <el-table-column prop="label" label="项目" width="120" />
-                    <el-table-column prop="value" label="内容" />
-                  </el-table>
-                </div>
-              </div>
-              
-              <div class="safety-stats">
-                <div class="stats-divider"></div>
-           
-                
-                <div class="stats-divider"></div>
-                
-                <!-- 设备选择 -->
-                <div class="device-selector" style="margin: 10px; text-align: left;">
-                  <el-form :inline="true">
-                    <el-form-item label="选择位移设备" style="margin-left: 0;">
-                      <el-select v-model="selectedDeviceCode" placeholder="请选择设备" :teleported="false" style="width: 200px;">
-                        <el-option 
-                          v-for="device in deviceList" 
-                          :key="device.deviceCode" 
-                          :label="device.deviceName" 
-                          :value="device.deviceCode">
-                        </el-option>
-                      </el-select>
-                    </el-form-item>
-                  </el-form>
-                </div>
-                
-                <div class="monitoring-table">
-                  <DisplacementTable 
-                    :height="250"
-                    :show-pagination="false"
-                    :filter-form="{ timeRange: '24h', direction: 'all' }"
-                    :device-code="selectedDeviceCode"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
 
-          <!-- 渗压和渗流量监测 -->
-          <div class="seepage-section">
-            <div class="seepage-cards">
-              <div class="seepage-card-with-chart">
-                <div class="card-header">
-                  <div class="card-title">
-                    <el-icon class="card-icon"><Histogram /></el-icon>
-                    <span>渗压监测</span>
-                  </div>
-                  <el-button type="text" class="detail-btn" @click="gotoSeepage">查看详情</el-button>
-                </div>
-                <div class="card-content">
-                  <div class="status-info">
-
-                  </div>
-                  <div class="chart-title">渗压值 (kPa)</div>
-                  <div ref="seepagePressureChart" class="chart" style="height:300px"></div>
-                </div>
-              </div>
-
-              <div class="seepage-card-with-chart">
-                <div class="card-header">
-                  <div class="card-title">
-                    <el-icon class="card-icon"><DataLine /></el-icon>
-                    <span>渗流量监测</span>
-                  </div>
-                  <el-button type="text" class="detail-btn" @click="gotoFlow">查看详情</el-button>
-                </div>
-                <div class="card-content">
-            
-                  <div class="chart-title">渗流量值 (L/s)</div>
-                  <div class="no-device-tip" style="display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
-    font-size: 18px;
-    margin-top: 15%;">
-                    <el-icon class="tip-icon" style="margin-right: 8px; font-size: 20px;"><InfoFilled /></el-icon>
-                    <span>暂未接入该类型设备</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </el-tab-pane>
       </el-tabs>
 
     </div>
@@ -334,7 +334,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed, reactive, onMounted, onBeforeUnmount,nextTick } from 'vue';
+import { ref, watch, computed, reactive, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { Picture, VideoCamera, CaretRight, Close, Histogram, DataLine, InfoFilled } from '@element-plus/icons-vue';
 import { ElMessage, ElDialog, ElInput, ElButton, ElDivider } from 'element-plus';
 import { gateOnOrOff, getMonitorDevicesByGateStationCodeApi, sendDeviceCommandApi, getDeviceManagementInfo, getGateExtInfo, getGateTaskList, taskSend, setGateOpeningRate, getGateControlCallback, getOsmoticPressureWeekMaxApi } from '@/api/reservoir';
@@ -364,7 +364,7 @@ const props = defineProps({
   }
 });
 
-const activeName = ref('first');
+const activeName = ref('second');
 
 const emit = defineEmits(['close']);
 
@@ -479,7 +479,70 @@ const gate2Info = computed(() => {
 
 // 关闭弹窗
 const closeModal = () => {
+  // 清理所有资源
+  cleanupResources();
   emit('close');
+};
+
+// 清理所有资源
+const cleanupResources = () => {
+  // 停止定时器
+  stopGateExtInfoTimer();
+
+  // 停止视频播放
+  stopVideo();
+
+  // 销毁图表实例
+  if (seepagePressureChart.value && seepagePressureChart.value.dispose) {
+    seepagePressureChart.value.dispose();
+    seepagePressureChart.value = null;
+  }
+
+  // 重置所有状态
+  resetAllStates();
+};
+
+// 重置所有状态
+const resetAllStates = () => {
+  // 重置闸门相关状态
+  gateExtInfo.value = null;
+  currentGateInfo.value = null;
+  selectedGatePort.value = '';
+  controlDeviceCode.value = '';
+
+  // 重置视频相关状态
+  cameraDevices.value = [];
+  selectedCameraDevice.value = '';
+  videoUrl.value = '';
+  connectionStatus.value = '未连接';
+  connectTime.value = '';
+  isPlaying.value = false;
+
+  // 重置任务相关状态
+  taskList.value = [];
+  taskLoading.value = false;
+  showAddTaskDialogVisible.value = false;
+  addTaskLoading.value = false;
+  addTaskForm.taskType = '';
+
+  // 重置开度控制状态
+  gateOpeningForm.openingValue = null;
+  gateOpeningLoading.value = false;
+
+  // 重置确认弹窗状态
+  dialogVisible.value = false;
+  dialogTitle.value = '';
+  userAnswer.value = '';
+  mathProblem.value = { question: '', answer: 0 };
+  pendingAction.value = '';
+
+  // 重置设备选择状态
+  deviceList.value = [];
+  selectedDeviceCode.value = '';
+
+  // 重置闸门位置
+  gate1Position.value = -45;
+  gate2Position.value = -45;
 };
 
 // 计算闸门位置
@@ -1120,7 +1183,7 @@ const fetchDeviceList = async () => {
       limit: 100,
       mcsType: 'displacement'
     };
-    
+
     const response = await getDeviceManagementPage(params);
     if (response && response.list) {
       deviceList.value = response.list;
@@ -1148,7 +1211,7 @@ const fetchOsmoticPressureData = async (gateStationCode) => {
 const updateSeepagePressureChart = (data) => {
   if (seepagePressureChart.value) {
     const chart = echarts.getInstanceByDom(seepagePressureChart.value) || echarts.init(seepagePressureChart.value);
-    
+
     // 如果没有数据，显示暂无数据
     if (!data || data.length === 0) {
       const option = {
@@ -1183,14 +1246,14 @@ const updateSeepagePressureChart = (data) => {
       chart.setOption(option);
       return;
     }
-    
+
     // 处理数据：提取日期（MM-DD格式）和渗压值
     const dates = data.map(item => {
       const date = new Date(item.daily);
       return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     });
     const pressureValues = data.map(item => item.maxWaterPressure);
-    
+
     const option = {
       title: {
         text: '',
@@ -1200,7 +1263,7 @@ const updateSeepagePressureChart = (data) => {
         trigger: 'axis',
         backgroundColor: 'rgba(0, 0, 0, 0.8)',
         textStyle: { color: '#fff' },
-        formatter: function(params) {
+        formatter: function (params) {
           return `${params[0].name}<br/>渗压值: ${params[0].value}kPa`;
         }
       },
@@ -1228,7 +1291,7 @@ const updateSeepagePressureChart = (data) => {
         symbolSize: 6
       }]
     };
-    
+
     chart.setOption(option);
   }
 };
@@ -1315,32 +1378,44 @@ const deleteTask = async (task) => {
 // 监听弹窗显示状态
 watch(() => props.show, (newShow) => {
   if (newShow && props.gateStationCode) {
-    // 弹窗打开时，初始化数据
-    fetchGateExtendedInfo(props.gateStationCode);
-    fetchControlDeviceCode(props.gateStationCode);
-    startGateExtInfoTimer(props.gateStationCode);
-    fetchCameraDevices(props.gateStationCode);
-    fetchTaskList(props.gateStationCode);
-    fetchDeviceList();
-    fetchOsmoticPressureData(props.gateStationCode);
-    
-    // 初始化图表
+    // 弹窗打开时，先清理之前的资源，然后重新初始化
+    cleanupResources();
+
+    // 重新初始化所有数据和状态
     nextTick(() => {
-      if (seepagePressureChart.value) {
-        updateSeepagePressureChart([]);
-      }
+      initializeModal(props.gateStationCode);
     });
   } else {
-    // 弹窗关闭时，清理资源
-    stopGateExtInfoTimer();
-    stopVideo();
+    // 弹窗关闭时，清理所有资源
+    cleanupResources();
   }
 });
 
+// 初始化弹窗
+const initializeModal = (gateStationCode) => {
+  // 重置tab到默认状态
+  activeName.value = 'second';
+
+  // 初始化数据
+  fetchGateExtendedInfo(gateStationCode);
+  fetchControlDeviceCode(gateStationCode);
+  startGateExtInfoTimer(gateStationCode);
+  fetchCameraDevices(gateStationCode);
+  fetchTaskList(gateStationCode);
+  fetchDeviceList();
+  fetchOsmoticPressureData(gateStationCode);
+
+  // 初始化图表
+  nextTick(() => {
+    if (seepagePressureChart.value) {
+      updateSeepagePressureChart([]);
+    }
+  });
+};
+
 // 组件卸载时清理资源
 onBeforeUnmount(() => {
-  stopGateExtInfoTimer();
-  stopVideo();
+  cleanupResources();
 });
 </script>
 
@@ -1407,6 +1482,7 @@ onBeforeUnmount(() => {
   padding: 24px;
   overflow-y: auto;
   background: #ffffff;
+  max-height: 800px;
   color: #303133;
 }
 
@@ -1624,9 +1700,11 @@ onBeforeUnmount(() => {
 :deep(.el-divider--vertical) {
   border-color: #e4e7ed;
 }
-:deep(.el-tabs__nav-scroll){
+
+:deep(.el-tabs__nav-scroll) {
   padding-left: 25px;
 }
+
 /* 安全概况样式 */
 .safety-overview {
   background: white;
@@ -1667,7 +1745,7 @@ onBeforeUnmount(() => {
       align-items: center;
       position: relative;
       justify-content: space-around;
-      
+
       .stat-item {
         display: flex;
         flex-direction: column;
@@ -1704,134 +1782,160 @@ onBeforeUnmount(() => {
     }
 
     .monitoring-table {
-    margin-top: 16px;
-    width: 800px;
+      margin-top: 16px;
+      // width: 800px;
+    }
   }
-}
 
-// 渗压渗流量区域样式
-.seepage-section {
-  margin-top: 24px;
-  
-  .seepage-cards {
-    display: flex;
-    gap: 24px;
-    
-    .seepage-card-with-chart {
-      flex: 1;
-      background: #ffffff;
-      border: 1px solid #e4e7ed;
-      border-radius: 8px;
-      overflow: hidden;
-      
-      .card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 16px 20px;
-        background: #f8f9fa;
-        border-bottom: 1px solid #e4e7ed;
-        
-        .card-title {
-          font-size: 16px;
-          font-weight: 600;
-          color: #303133;
-          margin: 0;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          
-          .el-icon {
-            color: #409eff;
-          }
-        }
-        
-        .detail-btn {
-          padding: 6px 12px;
-          font-size: 12px;
-          border-radius: 4px;
-          background: #409eff;
-          color: white;
-          border: none;
-          cursor: pointer;
-          transition: all 0.2s;
-          
-          &:hover {
-            background: #337ecc;
-          }
-        }
-      }
-      
-      .card-content {
-        padding: 20px;
-        
-        .status-info {
+  // 渗压渗流量区域样式
+  .seepage-section {
+    margin: 30px 0;
+
+    .seepage-cards {
+      display: flex;
+      gap: 24px;
+
+      .seepage-card-with-chart {
+        flex: 1;
+        background: #ffffff;
+        border: 1px solid #e4e7ed;
+        border-radius: 8px;
+        overflow: hidden;
+
+        .card-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 16px;
-          
-          .status-item {
-            text-align: center;
-            
-            .label {
-              font-size: 12px;
-              color: #909399;
-              margin-bottom: 4px;
+          padding: 16px 20px;
+          background: #f8f9fa;
+          border-bottom: 1px solid #e4e7ed;
+
+          .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #303133;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+
+            .el-icon {
+              color: #409eff;
             }
-            
-            .value {
-              font-size: 18px;
-              font-weight: 600;
-              
-              &.safe {
-                color: #67c23a;
-              }
-              
-              &.alert {
-                color: #e6a23c;
-              }
-              
-              &.warning {
-                color: #f56c6c;
-              }
+          }
+
+          .detail-btn {
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 4px;
+            background: #409eff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+
+            &:hover {
+              background: #337ecc;
             }
           }
         }
-        
-        .chart-title {
-          font-size: 14px;
-          color: #606266;
-          margin-bottom: 12px;
-          text-align: center;
-        }
-        
-        .chart {
-          width: 100%;
-          height: 200px;
-        }
-        
-        .no-device-tip {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          height: 200px;
-          color: #909399;
-          
-          .el-icon {
-            font-size: 48px;
-            margin-bottom: 12px;
-            color: #c0c4cc;
+
+        .card-content {
+          padding: 20px;
+
+          .status-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+
+            .status-item {
+              text-align: center;
+
+              .label {
+                font-size: 12px;
+                color: #909399;
+                margin-bottom: 4px;
+              }
+
+              .value {
+                font-size: 18px;
+                font-weight: 600;
+
+                &.safe {
+                  color: #67c23a;
+                }
+
+                &.alert {
+                  color: #e6a23c;
+                }
+
+                &.warning {
+                  color: #f56c6c;
+                }
+              }
+            }
           }
-          
-          .tip-text {
+
+          .chart-title {
             font-size: 14px;
+            color: #606266;
+            margin-bottom: 12px;
+            text-align: center;
+          }
+
+          .chart {
+            width: 100%;
+            height: 200px;
+          }
+
+          .no-device-tip {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            color: #909399;
+
+            .el-icon {
+              font-size: 48px;
+              margin-bottom: 12px;
+              color: #c0c4cc;
+            }
+
+            .tip-text {
+              font-size: 14px;
+            }
           }
         }
       }
     }
   }
 }
+
+// 闸门详情内容区域样式
+.gate-details-content {
+width: 1500px;
+    height: 800px;
+  overflow-y: auto;
+  padding-right: 8px;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+
+    &:hover {
+      background: #a8a8a8;
+    }
+  }
 }
 </style>

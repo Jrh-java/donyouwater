@@ -105,7 +105,7 @@ var shellData = damAgeData.counts.map((value) => maxValue);
     ],
     series: [
       {
-        name: '坝龄分布',
+        name: '闸龄分布',
         type: 'bar',
         barWidth: '40%', // Adjust bar width as needed
         data: damAgeData.counts,
@@ -150,7 +150,7 @@ var shellData = damAgeData.counts.map((value) => maxValue);
       // For simplicity, keeping percentages in tooltip and count on top of bar.
       // The image shows percentages inside the bar, let's try that with another label series or rich text.
       {
-        name: '坝龄分布百分比',
+        name: '闸龄分布百分比',
         type: 'pictorialBar',
         symbol: 'rect',
         itemStyle: {

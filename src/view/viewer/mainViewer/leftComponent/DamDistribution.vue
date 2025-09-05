@@ -1,7 +1,7 @@
 <template>
   <SubtitleFrame style="margin-top: 15px;">
     <template #title>
-      <p style="font-size: 16px; font-weight: bold; color: white; margin-bottom: 5px;">坝龄分布情况</p>
+      <p style="font-size: 16px; font-weight: bold; color: white; margin-bottom: 5px;">闸龄分布情况</p>
     </template>
     <template #content>
       <div class="dam-age-distribution-content">
