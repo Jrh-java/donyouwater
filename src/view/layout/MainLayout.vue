@@ -64,6 +64,13 @@
                 <i class="dropdown-icon">🔑</i>
                 <span>修改密码</span>
               </div>
+              <div class="dropdown-item mobile-download" @mouseenter="showQRCode = true" @mouseleave="showQRCode = false">
+                <i class="dropdown-icon">📱</i>
+                <span>下载移动端</span>
+                <div class="qr-code-popup" v-show="showQRCode">
+                  <img src="/QRcode.png" alt="移动端下载二维码" class="qr-code-image" />
+                </div>
+              </div>
               <div class="dropdown-item" @click="handleUserAction('logout')">
                 <i class="dropdown-icon">🚪</i>
                 <span>退出系统</span>
@@ -167,6 +174,9 @@ const expandedMenu = ref('')
 
 // 修改密码弹窗状态
 const showChangePasswordDialog = ref(false)
+
+// 二维码显示状态
+const showQRCode = ref(false)
 
 // 获取图标组件
 function getIconComponent(iconName) {
@@ -693,6 +703,7 @@ onMounted(async () => {
       cursor: pointer;
       transition: all 0.3s;
       color: rgba(0, 0, 0, 0.85);
+      position: relative;
 
       &:hover {
         background-color: rgba(0, 0, 0, 0.025);
@@ -702,6 +713,33 @@ onMounted(async () => {
       .dropdown-icon {
         margin-right: 12px;
         font-size: 16px;
+      }
+
+      &.mobile-download {
+        cursor: default;
+        
+        &:hover {
+          background-color: rgba(0, 0, 0, 0.025);
+          color: #1890ff;
+        }
+      }
+    }
+
+    .qr-code-popup {
+      position: absolute;
+      left: -120px;
+      top: 50%;
+      transform: translateY(-50%);
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      padding: 12px;
+      z-index: 9999;
+      
+      .qr-code-image {
+        width: 100px;
+        height: 100px;
+        display: block;
       }
     }
   }

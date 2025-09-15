@@ -192,15 +192,20 @@
                 </el-descriptions>
                 <!-- 闸口选择和开度控制 -->
                 <div class="gate-control-section" style="margin: 20px 0;">
-                  <el-form :inline="true" :model="gateOpeningForm" style="display:flex">
-                    <el-form-item label="选择闸口:" style="font-size: 16px;">
+                  <!-- 第一行：选择闸口和开度控制 -->
+                  <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: end;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                      <label style="font-size: 16px; white-space: nowrap;">选择闸口:</label>
                       <el-select v-model="selectedGatePort" placeholder="请选择闸口" style="width: 200px;"
-                        :teleported="false" :disabled="!selectedGatePort" @change="handleGatePortChange">
+                        :teleported="false" @change="handleGatePortChange">
                         <el-option v-for="option in gatePortOptions" :key="option.value" :label="option.label"
                           :value="option.value"></el-option>
                       </el-select>
-                    </el-form-item>
-                    <el-form-item label="闸口开度:" style="font-size: 16px; margin-left: 20px;">
+                    </div>
+                    
+                    <!-- 单个闸口开度控制 -->
+                    <div v-if="selectedGatePort !== 'ALL_GATES'" style="display: flex; align-items: center; gap: 10px;">
+                      <label style="font-size: 16px; white-space: nowrap;">闸口开度:</label>
                       <el-input v-model.number="gateOpeningForm.openingValue" type="number" :min="0" :max="100"
                         placeholder="请输入开度" style="width: 200px;" :disabled="!selectedGatePort"
                         @input="handleOpeningValueInput">
@@ -208,18 +213,42 @@
                           <span>%</span>
                         </template>
                       </el-input>
-                    </el-form-item>
-                  </el-form>
+                    </div>
+                    
+                    <!-- 全部闸口开度控制 - 第一行一号闸口 -->
+                    <div v-if="selectedGatePort === 'ALL_GATES'" style="display: flex; align-items: center; gap: 10px;">
+                      <label style="font-size: 16px; white-space: nowrap;">一号闸口:</label>
+                      <el-input v-model.number="gateOpeningForm.gate1OpeningValue" type="number" :min="0" :max="100"
+                        placeholder="请输入一号闸口开度" style="width: 200px;" @input="handleGate1OpeningValueInput">
+                        <template #suffix>
+                          <span>%</span>
+                        </template>
+                      </el-input>
+                    </div>
+                  </div>
+                  
+                  <!-- 全部闸口模式下的第二行 -->
+                  <div v-if="selectedGatePort === 'ALL_GATES'" style="display: flex; gap: 20px; align-items: end; margin-top: 15px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                      <label style="font-size: 16px; white-space: nowrap;">二号闸口:</label>
+                      <el-input v-model.number="gateOpeningForm.gate2OpeningValue" type="number" :min="0" :max="100"
+                        placeholder="请输入二号闸口开度" style="width: 200px;" @input="handleGate2OpeningValueInput">
+                        <template #suffix>
+                          <span>%</span>
+                        </template>
+                      </el-input>
+                    </div>
+                  </div>
 
                   <!-- 执行和停闸按钮 -->
                   <div style="text-align: center; margin-top: 15px;">
                     <el-button type="primary" @click="showConfirmationDialog('opening')"
-                      :disabled="!selectedGatePort || (currentGateInfo && String(currentGateInfo.isHandle) === '1.0') || gateOpeningForm.openingValue === null || gateOpeningForm.openingValue === undefined"
+                      :disabled="isExecuteButtonDisabled"
                       :loading="gateOpeningLoading">
                       执行
                     </el-button>
                     <el-button type="warning" @click="stopGate" style="margin-left: 10px;"
-                      :disabled="!selectedGatePort || (currentGateInfo && String(currentGateInfo.isHandle) === '1.0')">停闸</el-button>
+                      :disabled="isStopButtonDisabled">停闸</el-button>
                   </div>
                 </div>
               </el-col>
@@ -396,7 +425,8 @@ const gate2Position = ref(-45); // 闸门2位置（0%开度时为-45%）
 const selectedGatePort = ref('');
 const gatePortOptions = ref([
   { label: '一号闸口', value: 'IRDA1.DEVICE.GATE.OPENING' },
-  { label: '二号闸口', value: 'IRDA2.DEVICE.GATE.OPENING' }
+  { label: '二号闸口', value: 'IRDA2.DEVICE.GATE.OPENING' },
+  { label: '全部闸口', value: 'ALL_GATES' }
 ]);
 
 // 设备编码（用于控制操作）
@@ -431,7 +461,9 @@ const taskTypeOptions = ref([
 
 // 闸口开度控制相关
 const gateOpeningForm = reactive({
-  openingValue: null
+  openingValue: null,
+  gate1OpeningValue: null,
+  gate2OpeningValue: null
 });
 const gateOpeningLoading = ref(false);
 
@@ -475,6 +507,55 @@ const gate1Info = computed(() => {
 const gate2Info = computed(() => {
   if (!gateExtInfo.value || !Array.isArray(gateExtInfo.value)) return null;
   return gateExtInfo.value.find(item => item.devpoint === 'IRDA2.DEVICE.GATE.OPENING');
+});
+
+// 计算执行按钮是否禁用
+const isExecuteButtonDisabled = computed(() => {
+  if (!selectedGatePort.value) return true;
+  
+  if (selectedGatePort.value === 'ALL_GATES') {
+    // 全部闸口模式：两个输入框都必须有有效值
+    const gate1Valid = gateOpeningForm.gate1OpeningValue !== null && 
+                      gateOpeningForm.gate1OpeningValue !== undefined && 
+                      gateOpeningForm.gate1OpeningValue !== '';
+    const gate2Valid = gateOpeningForm.gate2OpeningValue !== null && 
+                      gateOpeningForm.gate2OpeningValue !== undefined && 
+                      gateOpeningForm.gate2OpeningValue !== '';
+    
+    // 检查是否有任何闸口处于手动模式
+    const gate1Info = gateExtInfo.value?.find(item => item.devpoint === 'IRDA1.DEVICE.GATE.OPENING');
+    const gate2Info = gateExtInfo.value?.find(item => item.devpoint === 'IRDA2.DEVICE.GATE.OPENING');
+    const anyGateInManualMode = (gate1Info && String(gate1Info.isHandle) === '1.0') || 
+                               (gate2Info && String(gate2Info.isHandle) === '1.0');
+    
+    return !gate1Valid || !gate2Valid || anyGateInManualMode;
+  } else {
+    // 单个闸口模式：原有逻辑
+    const valueValid = gateOpeningForm.openingValue !== null && 
+                      gateOpeningForm.openingValue !== undefined;
+    const manualMode = currentGateInfo.value && String(currentGateInfo.value.isHandle) === '1.0';
+    
+    return !valueValid || manualMode;
+  }
+});
+
+// 计算停闸按钮是否禁用
+const isStopButtonDisabled = computed(() => {
+  if (!selectedGatePort.value) return true;
+  
+  if (selectedGatePort.value === 'ALL_GATES') {
+    // 全部闸口模式：检查是否有任何闸口处于手动模式
+    const gate1Info = gateExtInfo.value?.find(item => item.devpoint === 'IRDA1.DEVICE.GATE.OPENING');
+    const gate2Info = gateExtInfo.value?.find(item => item.devpoint === 'IRDA2.DEVICE.GATE.OPENING');
+    const anyGateInManualMode = (gate1Info && String(gate1Info.isHandle) === '1.0') || 
+                               (gate2Info && String(gate2Info.isHandle) === '1.0');
+    
+    return anyGateInManualMode;
+  } else {
+    // 单个闸口模式：原有逻辑
+    const manualMode = currentGateInfo.value && String(currentGateInfo.value.isHandle) === '1.0';
+    return manualMode;
+  }
 });
 
 // 关闭弹窗
@@ -527,6 +608,8 @@ const resetAllStates = () => {
 
   // 重置开度控制状态
   gateOpeningForm.openingValue = null;
+  gateOpeningForm.gate1OpeningValue = null;
+  gateOpeningForm.gate2OpeningValue = null;
   gateOpeningLoading.value = false;
 
   // 重置确认弹窗状态
@@ -583,10 +666,15 @@ const fetchGateExtendedInfo = async (gateStationCode) => {
         // 设置闸口选项
         if (Array.isArray(extInfo)) {
           const currentSelectedPort = selectedGatePort.value;
-          gatePortOptions.value = extInfo.map((item, index) => ({
+          // 先添加具体闸口选项，再添加"全部闸口"选项
+          const specificGateOptions = extInfo.map((item, index) => ({
             label: item.devpoint.includes('IRDA2') ? '二号闸口' : '一号闸口',
             value: item.devpoint
           }));
+          gatePortOptions.value = [
+            ...specificGateOptions,
+            { label: '全部闸口', value: 'ALL_GATES' }
+          ];
 
           // 更新闸门位置
           updateGatePositions(extInfo);
@@ -650,14 +738,26 @@ const handleGatePortChange = (selectedPort) => {
     return;
   }
 
-  // 根据选择的闸口找到对应的闸门信息
-  const gateInfo = gateExtInfo.value.find(item => item.devpoint === selectedPort);
-  if (gateInfo) {
-    currentGateInfo.value = gateInfo;
-    console.log('选择闸口:', selectedPort, '对应信息:', gateInfo);
+  if (selectedPort === 'ALL_GATES') {
+    // 选择全部闸口时，使用一号闸口的信息作为全部闸口的情况信息
+    const gate1Info = gateExtInfo.value.find(item => item.devpoint === 'IRDA1.DEVICE.GATE.OPENING');
+    currentGateInfo.value = gate1Info || null;
+    // 只清空单个闸口的输入值，保留全部闸口的输入值
+    gateOpeningForm.openingValue = null;
+    console.log('选择全部闸口模式，使用一号闸口信息:', gate1Info);
   } else {
-    currentGateInfo.value = null;
-    console.warn('未找到对应闸口的信息:', selectedPort);
+    // 根据选择的闸口找到对应的闸门信息
+    const gateInfo = gateExtInfo.value.find(item => item.devpoint === selectedPort);
+    if (gateInfo) {
+      currentGateInfo.value = gateInfo;
+      // 只清空全部闸口的输入值，保留单个闸口的输入值
+      gateOpeningForm.gate1OpeningValue = null;
+      gateOpeningForm.gate2OpeningValue = null;
+      console.log('选择闸口:', selectedPort, '对应信息:', gateInfo);
+    } else {
+      currentGateInfo.value = null;
+      console.warn('未找到对应闸口的信息:', selectedPort);
+    }
   }
 };
 
@@ -820,17 +920,7 @@ const closeGateLogic = async () => {
 // 设置闸口开度逻辑
 const setGateOpeningLogic = async () => {
   if (!selectedGatePort.value) {
-    ElMessage.error('请先选择闸口');
-    return;
-  }
-
-  if (gateOpeningForm.openingValue === null || gateOpeningForm.openingValue === undefined) {
-    ElMessage.error('请输入开度值');
-    return;
-  }
-
-  if (gateOpeningForm.openingValue < 0 || gateOpeningForm.openingValue > 100) {
-    ElMessage.error('开度值必须在0-100之间');
+    ElMessage.warning('请选择闸口');
     return;
   }
 
@@ -842,39 +932,122 @@ const setGateOpeningLogic = async () => {
   try {
     gateOpeningLoading.value = true;
 
-    // 根据选中的闸口确定devpoint
-    let devpoint = '';
-    if (selectedGatePort.value === 'IRDA1.DEVICE.GATE.OPENING') {
-      devpoint = 'IRDA1.DEVICE.GATE.PROGRESS';
-    } else if (selectedGatePort.value === 'IRDA2.DEVICE.GATE.OPENING') {
-      devpoint = 'IRDA2.DEVICE.GATE.PROGRESS';
-    } else {
-      ElMessage.error('无效的闸口选择');
-      return;
-    }
-
-    // 调用封装的接口发送控制指令
-    await setGateOpeningRate(controlDeviceCode.value, devpoint, gateOpeningForm.openingValue.toString());
-
-    // 检查指令发送结果
-    try {
-      const callbackResult = await getGateControlCallback(controlDeviceCode.value, devpoint);
-      if (callbackResult === "1") {
-        ElMessage.success('闸口开度控制指令发送成功');
-      } else {
-        ElMessage.error('闸口开度控制指令发送失败');
+    if (selectedGatePort.value === 'ALL_GATES') {
+      // 全部闸口模式：同时控制两个闸口
+      if (gateOpeningForm.gate1OpeningValue === null || gateOpeningForm.gate1OpeningValue === undefined ||
+          gateOpeningForm.gate2OpeningValue === null || gateOpeningForm.gate2OpeningValue === undefined) {
+        ElMessage.warning('请为一号和二号闸口都输入开度值');
+        return;
       }
-    } catch (callbackError) {
-      console.error('获取指令回调结果失败:', callbackError);
-      ElMessage.warning('指令已发送，但无法确认执行状态');
-    }
 
-    // 清空输入框
-    gateOpeningForm.openingValue = null;
+      const operations = [
+        {
+          devpoint: 'IRDA1.DEVICE.GATE.PROGRESS',
+          value: gateOpeningForm.gate1OpeningValue.toString(),
+          name: '一号闸口'
+        },
+        {
+          devpoint: 'IRDA2.DEVICE.GATE.PROGRESS',
+          value: gateOpeningForm.gate2OpeningValue.toString(),
+          name: '二号闸口'
+        }
+      ];
+
+      let successCount = 0;
+      let errorMessages = [];
+
+      // 并行执行两个闸口的控制指令
+      const promises = operations.map(async (op) => {
+        try {
+          await setGateOpeningRate(controlDeviceCode.value, op.devpoint, op.value);
+          
+          // 检查指令发送结果
+          try {
+             await new Promise(resolve => setTimeout(resolve, 2000));
+            const callbackResult = await getGateControlCallback(controlDeviceCode.value, op.devpoint);
+            if (callbackResult === "1") {
+              successCount++;
+              return { success: true, name: op.name };
+            } else {
+              errorMessages.push(`${op.name}控制指令发送失败`);
+              return { success: false, name: op.name };
+            }
+          } catch (callbackError) {
+            console.error(`获取${op.name}指令回调结果失败:`, callbackError);
+            errorMessages.push(`${op.name}指令已发送，但无法确认执行状态`);
+            return { success: false, name: op.name };
+          }
+        } catch (error) {
+          console.error(`${op.name}开度控制失败:`, error);
+          errorMessages.push(`${op.name}开度控制失败: ${error.message || '未知错误'}`);
+          return { success: false, name: op.name };
+        }
+      });
+
+      await Promise.all(promises);
+
+      // 显示执行结果
+      if (successCount === 2) {
+        ElMessage.success('全部闸口开度控制指令发送成功');
+        // 只有全部成功时才清空输入框
+        gateOpeningForm.gate1OpeningValue = null;
+        gateOpeningForm.gate2OpeningValue = null;
+      } else if (successCount === 1) {
+        ElMessage.warning(`部分闸口控制成功。错误信息: ${errorMessages.join('; ')}`);
+        // 部分成功时不清空输入框，让用户可以重试失败的部分
+      } else {
+        ElMessage.error(`全部闸口控制失败。错误信息: ${errorMessages.join('; ')}`);
+        // 全部失败时不清空输入框，让用户可以重试
+      }
+
+    } else {
+      // 单个闸口模式：原有逻辑
+      if (gateOpeningForm.openingValue === null || gateOpeningForm.openingValue === undefined) {
+        ElMessage.warning('请输入开度值');
+        return;
+      }
+
+      if (gateOpeningForm.openingValue < 0 || gateOpeningForm.openingValue > 100) {
+        ElMessage.error('开度值必须在0-100之间');
+        return;
+      }
+
+      // 根据选中的闸口确定devpoint
+      let devpoint = '';
+      if (selectedGatePort.value === 'IRDA1.DEVICE.GATE.OPENING') {
+        devpoint = 'IRDA1.DEVICE.GATE.PROGRESS';
+      } else if (selectedGatePort.value === 'IRDA2.DEVICE.GATE.OPENING') {
+        devpoint = 'IRDA2.DEVICE.GATE.PROGRESS';
+      } else {
+        ElMessage.error('无效的闸口选择');
+        return;
+      }
+
+      // 调用封装的接口发送控制指令
+      await setGateOpeningRate(controlDeviceCode.value, devpoint, gateOpeningForm.openingValue.toString());
+
+      // 检查指令发送结果
+      try {
+         await new Promise(resolve => setTimeout(resolve, 2000));
+        const callbackResult = await getGateControlCallback(controlDeviceCode.value, devpoint);
+        if (callbackResult === "1") {
+          ElMessage.success('闸口开度控制指令发送成功');
+          // 只有成功时才清空输入框
+          gateOpeningForm.openingValue = null;
+        } else {
+          ElMessage.error('闸口开度控制指令发送失败');
+          // 失败时不清空输入框，让用户可以重试
+        }
+      } catch (callbackError) {
+        console.error('获取指令回调结果失败:', callbackError);
+        ElMessage.warning('指令已发送，但无法确认执行状态');
+        // 无法确认状态时不清空输入框
+      }
+    }
 
   } catch (error) {
-    console.error('设置开度操作失败:', error);
-    ElMessage.error('设置开度操作失败');
+    console.error('闸口开度控制失败:', error);
+    ElMessage.error('闸口开度控制失败: ' + (error.message || '未知错误'));
   } finally {
     gateOpeningLoading.value = false;
   }
@@ -893,12 +1066,58 @@ const stopGate = async () => {
   }
 
   try {
-    const stopPayload = {
-      devpoint: selectedGatePort.value,
-      controlVal: '3' // 停止
-    };
-    await gateOnOrOff(controlDeviceCode.value, JSON.stringify(stopPayload));
-    ElMessage.success('停闸操作成功');
+    if (selectedGatePort.value === 'ALL_GATES') {
+      // 全部闸口模式：同时停止两个闸口
+      const operations = [
+        {
+          devpoint: 'IRDA1.DEVICE.GATE.OPENING',
+          name: '一号闸口'
+        },
+        {
+          devpoint: 'IRDA2.DEVICE.GATE.OPENING',
+          name: '二号闸口'
+        }
+      ];
+
+      let successCount = 0;
+      let errorMessages = [];
+
+      // 并行执行两个闸口的停止指令
+      const promises = operations.map(async (op) => {
+        try {
+          const stopPayload = {
+            devpoint: op.devpoint,
+            controlVal: '3' // 停止
+          };
+          await gateOnOrOff(controlDeviceCode.value, JSON.stringify(stopPayload));
+          successCount++;
+          return { success: true, name: op.name };
+        } catch (error) {
+          console.error(`${op.name}停闸操作失败:`, error);
+          errorMessages.push(`${op.name}停闸失败`);
+          return { success: false, name: op.name };
+        }
+      });
+
+      await Promise.all(promises);
+
+      // 显示执行结果
+      if (successCount === 2) {
+        ElMessage.success('全部闸口停闸操作成功');
+      } else if (successCount === 1) {
+        ElMessage.warning(`部分闸口停闸成功。错误信息: ${errorMessages.join('; ')}`);
+      } else {
+        ElMessage.error(`全部闸口停闸失败。错误信息: ${errorMessages.join('; ')}`);
+      }
+    } else {
+      // 单个闸口模式：原有逻辑
+      const stopPayload = {
+        devpoint: selectedGatePort.value,
+        controlVal: '3' // 停止
+      };
+      await gateOnOrOff(controlDeviceCode.value, JSON.stringify(stopPayload));
+      ElMessage.success('停闸操作成功');
+    }
   } catch (error) {
     console.error('停闸操作失败:', error);
     ElMessage.error('停闸操作失败');
@@ -912,6 +1131,30 @@ const handleOpeningValueInput = (value) => {
       gateOpeningForm.openingValue = 0;
     } else if (value > 100) {
       gateOpeningForm.openingValue = 100;
+    }
+  }
+};
+
+// 处理一号闸口开度输入值变化
+const handleGate1OpeningValueInput = (value) => {
+  if (value !== null && value !== undefined && value !== '') {
+    const numValue = Number(value);
+    if (numValue < 0) {
+      gateOpeningForm.gate1OpeningValue = 0;
+    } else if (numValue > 100) {
+      gateOpeningForm.gate1OpeningValue = 100;
+    }
+  }
+};
+
+// 处理二号闸口开度输入值变化
+const handleGate2OpeningValueInput = (value) => {
+  if (value !== null && value !== undefined && value !== '') {
+    const numValue = Number(value);
+    if (numValue < 0) {
+      gateOpeningForm.gate2OpeningValue = 0;
+    } else if (numValue > 100) {
+      gateOpeningForm.gate2OpeningValue = 100;
     }
   }
 };
