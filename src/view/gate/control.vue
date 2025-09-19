@@ -158,38 +158,31 @@
       <el-col :span="13" class="content-col">
         <div class="column-header">
           <span>实时视频</span>
-          <!-- 摄像枪选择下拉框 -->
-          <el-select v-model="selectedCameraDevice" placeholder="请选择摄像枪" style="width: 200px;"
-            :disabled="!cameraDevices.length" @change="handleCameraDeviceChange" :teleported="false">
-            <el-option v-for="device in cameraDevices" :key="device.deviceCode" :label="device.deviceName"
-              :value="device.deviceCode"></el-option>
-          </el-select>
         </div>
-        <!-- <div v-if="!cameraDevices.length" class="camera-tip">
-          暂无摄像设备
-        </div> -->
         <div class="gate-external-monitor">
-          <!-- 视频播放区域 -->
-          <div class="video-display-area">
-            <video ref="videoElement" class="video-player" controls muted autoplay
-              style="width: 100%; height: 450px; background-color: #000;">
-              您的浏览器不支持视频播放
-            </video>
-            <div v-if="!videoUrl" class="video-placeholder">
+          <!-- 多视频播放区域 -->
+          <div class="multi-video-display-area">
+            <div v-if="videoPlayers.length === 0" class="video-placeholder">
               <div style="text-align: center; color: #999;">
                 <div style="font-size: 48px; margin-bottom: 10px;">📹</div>
-                <div style="font-size: 16px;">请选择摄像枪查看视频</div>
+                <div style="font-size: 16px;">暂无视频播放</div>
               </div>
             </div>
-            <div class="video-status-overlay">
-              <!-- <span>连接状态: {{ connectionStatus }}</span> -->
-              <span v-if="connectTime">连接时间: {{ connectTime }}</span>
+            <div v-else class="video-grid" :class="getVideoGridClass()">
+              <div v-for="(player, index) in videoPlayers" :key="player.deviceCode" class="video-container">
+                <div class="video-header">
+                  <span class="video-title">{{ player.deviceName }}</span>
+                  <!-- <el-button type="danger" size="small" @click="removeVideoPlayer(index)">关闭</el-button> -->
+                </div>
+                <video :ref="el => setVideoRef(el, index)" class="video-player" controls muted autoplay
+                  style="width: 100%; height: 100%; background-color: #000;">
+                  您的浏览器不支持视频播放
+                </video>
+                <div class="video-status-overlay">
+                  <span v-if="player.connectTime">连接时间: {{ player.connectTime }}</span>
+                </div>
+              </div>
             </div>
-          </div>
-          <div style="text-align: left; margin-top: 5px;">
-            <el-tag type="success"><el-icon>
-                <CaretRight />
-              </el-icon> 实时视频</el-tag>
           </div>
         </div>
 
@@ -417,7 +410,7 @@
 </style>
 
 <script setup>
-import { ref, watch, computed, reactive, onMounted, onBeforeUnmount } from 'vue';
+import { ref, watch, computed, reactive, onMounted, onBeforeUnmount,nextTick } from 'vue';
 import { Picture, VideoCamera, CaretRight } from '@element-plus/icons-vue';
 import { ElMessage, ElDialog, ElInput, ElButton, ElDivider } from 'element-plus';
 import { useStore } from '@/store/pinia';
@@ -453,7 +446,7 @@ const gatePortOptions = ref([
 // 设备编码（用于控制操作）
 const controlDeviceCode = ref('');
 
-// 摄像设备相关
+// 视频播放相关
 const cameraDevices = ref([]);
 const selectedCameraDevice = ref('');
 const videoElement = ref(null);
@@ -462,6 +455,10 @@ const videoUrl = ref('');
 const connectionStatus = ref('未连接');
 const connectTime = ref('');
 const isPlaying = ref(false);
+
+// 多视频播放相关
+const videoPlayers = ref([]);
+const videoRefs = ref([]);
 
 // 任务计划相关
 const taskList = ref([]);
@@ -741,12 +738,260 @@ const fetchCameraDevices = async (gateStationCode) => {
   }
 };
 
-// 处理摄像设备选择变化
-const handleCameraDeviceChange = (deviceCode) => {
-  if (deviceCode) {
-    console.log('选择摄像设备:', deviceCode);
-    sendControlCommand(deviceCode);
+// 处理多个摄像设备变化（新增函数）
+const handleMultipleCameraDeviceChange = async (devices) => {
+  if (!devices || devices.length === 0) {
+    console.log('没有摄像设备');
+    return;
   }
+
+  // 清空现有的视频播放器
+  cleanup();
+  videoPlayers.value = [];
+  videoRefs.value = [];
+
+  console.log('开始播放多个摄像设备视频:', devices);
+
+  // 为每个设备创建视频播放器
+  for (let i = 0; i < devices.length; i++) {
+    const device = devices[i];
+    const player = {
+      deviceCode: device.deviceCode,
+      deviceName: device.deviceName,
+      flvPlayer: null,
+      connectTime: '',
+      videoUrl: ''
+    };
+    
+    videoPlayers.value.push(player);
+    
+    // 等待DOM更新后初始化播放器
+    await nextTick();
+    
+    // 发送控制命令并初始化播放器
+    await sendControlCommandForDevice(device.deviceCode, i);
+  }
+};
+
+// 为特定设备发送控制命令（新增函数）
+const sendControlCommandForDevice = async (deviceCode, playerIndex) => {
+  try {
+    const topic = `YN/0000/769834/control/${deviceCode}`;
+    const payloadStr = JSON.stringify({
+      "command": "config",
+      "rtmpCtrl": {
+        "rtmpEnable": 1,
+        "rtmpServer": "119.3.245.90",
+        "rtmpPort": 1935,
+        "releaseTime": 5
+      }
+    });
+
+    console.log(`发送摄像设备 ${deviceCode} 控制命令`);
+    const result = await sendDeviceCommandApi(topic, payloadStr);
+    console.log('发送控制命令结果:', result);
+
+    if (result === "发送取流命令成功！") {
+      // 构建FLV视频流地址
+      const flvUrl = `http://220.250.41.136:8866/live?url=rtmp://119.3.245.90/live/${deviceCode}`;
+      console.log('准备播放FLV流:', flvUrl);
+
+      // 更新播放器信息
+      if (videoPlayers.value[playerIndex]) {
+        videoPlayers.value[playerIndex].videoUrl = flvUrl;
+        videoPlayers.value[playerIndex].connectTime = new Date().toLocaleTimeString();
+      }
+
+      // 等待2秒让设备准备好，然后初始化播放器
+      setTimeout(() => {
+        initFLVPlayerForDevice(flvUrl, playerIndex);
+      }, 2000);
+    } else {
+      ElMessage.error(`摄像设备 ${deviceCode} 控制失败`);
+    }
+  } catch (error) {
+    console.error(`发送控制命令失败:`, error);
+    ElMessage.error(`摄像设备 ${deviceCode} 控制失败`);
+  }
+};
+
+// 为特定设备初始化FLV播放器（新增函数）
+const initFLVPlayerForDevice = async (videoUrl, playerIndex) => {
+  try {
+    // 等待video元素准备就绪
+    await nextTick();
+    
+    const videoElement = videoRefs.value[playerIndex];
+    if (!videoElement) {
+      console.error(`视频元素未找到，索引: ${playerIndex}`);
+      return;
+    }
+
+    if (!videoUrl) {
+      console.error('视频URL为空');
+      return;
+    }
+
+    console.log(`初始化FLV播放器 ${playerIndex}:`, videoUrl);
+
+    if (flvjs.isSupported()) {
+      // 如果已有播放器，先销毁
+      if (videoPlayers.value[playerIndex] && videoPlayers.value[playerIndex].flvPlayer) {
+        const existingPlayer = videoPlayers.value[playerIndex].flvPlayer;
+        try {
+          if (!existingPlayer.destroyed) {
+            existingPlayer.pause();
+            existingPlayer.unload();
+            existingPlayer.detachMediaElement();
+            existingPlayer.destroy();
+          }
+        } catch (e) {
+          console.warn(`销毁已有播放器 ${playerIndex} 时出错:`, e);
+        }
+        videoPlayers.value[playerIndex].flvPlayer = null;
+      }
+
+      const player = flvjs.createPlayer({
+        type: 'flv',
+        url: videoUrl,
+        isLive: true,
+        hasAudio: false,
+        hasVideo: true,
+        enableWorker: false,
+        enableStashBuffer: false,
+        stashInitialSize: 128,
+        autoCleanupSourceBuffer: true
+      });
+
+      // 绑定到video元素
+      player.attachMediaElement(videoElement);
+
+      // 事件监听
+      player.on(flvjs.Events.LOADING_COMPLETE, () => {
+        console.log(`播放器 ${playerIndex} 加载完成`);
+      });
+
+      player.on(flvjs.Events.MEDIA_INFO, (mediaInfo) => {
+        console.log(`播放器 ${playerIndex} 媒体信息:`, mediaInfo);
+      });
+
+      player.on(flvjs.Events.ERROR, (errorType, errorDetail, errorInfo) => {
+        console.error(`播放器 ${playerIndex} 错误:`, errorType, errorDetail, errorInfo);
+        
+        let errorMessage = '视频播放失败';
+        let shouldReconnect = false;
+
+        if (errorType === 'MediaError') {
+          if (errorDetail === 'FormatUnsupported') {
+            errorMessage = `播放器 ${playerIndex} 视频格式不支持，请检查视频流地址`;
+          } else if (errorDetail === 'NetworkError') {
+            errorMessage = `播放器 ${playerIndex} 网络连接失败，正在尝试重连...`;
+            shouldReconnect = true;
+          }
+        } else if (errorType === 'NetworkError') {
+          // 检测到网络错误，可能是自动断流
+          errorMessage = `播放器 ${playerIndex} 视频流已断开，正在尝试重连...`;
+          shouldReconnect = true;
+        }
+
+        if (shouldReconnect && videoPlayers.value[playerIndex]) {
+          const deviceCode = videoPlayers.value[playerIndex].deviceCode;
+          console.log(`检测到播放器 ${playerIndex} 自动断流，尝试重连设备: ${deviceCode}`);
+          ElMessage.warning(`播放器 ${playerIndex} 视频流已断开，正在尝试重连...`);
+
+          // 清理当前播放器
+          if (player && !player.destroyed) {
+            try {
+              player.pause();
+              player.unload();
+              player.detachMediaElement();
+              player.destroy();
+            } catch (e) {
+              console.error(`清理播放器 ${playerIndex} 失败:`, e);
+            }
+          }
+
+          // 延迟2秒后重新发送控制命令
+          setTimeout(() => {
+            if (videoPlayers.value[playerIndex] && deviceCode) {
+              console.log(`重新发送控制命令给设备: ${deviceCode}`);
+              sendControlCommandForDevice(deviceCode, playerIndex);
+            }
+          }, 2000);
+        } else {
+          ElMessage.error(errorMessage);
+          // 移除失败的播放器
+          if (videoPlayers.value[playerIndex]) {
+            removeVideoPlayer(playerIndex);
+          }
+        }
+      });
+
+      // 加载并播放
+      player.load();
+      
+      // 存储播放器实例
+      if (videoPlayers.value[playerIndex]) {
+        videoPlayers.value[playerIndex].flvPlayer = player;
+      }
+
+      // 尝试播放
+      try {
+        await videoElement.play();
+        console.log(`播放器 ${playerIndex} 开始播放`);
+      } catch (playError) {
+        console.warn(`播放器 ${playerIndex} 自动播放失败:`, playError);
+      }
+
+    } else {
+      console.error('浏览器不支持FLV播放');
+      ElMessage.error('浏览器不支持FLV播放');
+    }
+
+  } catch (error) {
+    console.error(`初始化播放器 ${playerIndex} 失败:`, error);
+  }
+};
+
+// 设置视频元素引用（新增函数）
+const setVideoRef = (el, index) => {
+  if (el) {
+    videoRefs.value[index] = el;
+  }
+};
+
+// 移除视频播放器（新增函数）
+const removeVideoPlayer = (index) => {
+  if (videoPlayers.value[index] && videoPlayers.value[index].flvPlayer) {
+    const player = videoPlayers.value[index].flvPlayer;
+    try {
+      if (!player.destroyed) {
+        player.pause();
+        player.unload();
+        player.detachMediaElement();
+        player.destroy();
+      }
+    } catch (e) {
+      console.warn(`移除播放器 ${index} 时出错:`, e);
+    }
+  }
+  videoPlayers.value.splice(index, 1);
+  videoRefs.value.splice(index, 1);
+};
+
+// 获取视频网格样式类（新增函数）
+const getVideoGridClass = () => {
+  const count = videoPlayers.value.length;
+  if (count === 1) return 'single-video';
+  if (count === 2) return 'dual-video';
+  if (count <= 4) return 'quad-video';
+  return 'multi-video';
+};
+
+// 处理摄像设备选择变化（保留原函数但标记为废弃）
+const handleCameraDeviceChange = (deviceCode) => {
+  console.warn('handleCameraDeviceChange 函数已废弃，请使用 handleMultipleCameraDeviceChange');
+  // 为了兼容性，暂时保留但不执行任何操作
 };
 
 // 发送设备控制命令
@@ -900,6 +1145,7 @@ const initFLVPlayer = (url) => {
 
 // 清理播放器资源
 const cleanup = () => {
+  // 清理原有的单个播放器
   if (flvPlayer.value) {
     try {
       flvPlayer.value.pause();
@@ -910,6 +1156,26 @@ const cleanup = () => {
       console.error('清理播放器失败:', error);
     }
     flvPlayer.value = null;
+  }
+
+  // 清理多个播放器
+  if (videoPlayers.value && videoPlayers.value.length > 0) {
+    videoPlayers.value.forEach((player, index) => {
+      if (player.flvPlayer) {
+        try {
+          if (!player.flvPlayer.destroyed) {
+            player.flvPlayer.pause();
+            player.flvPlayer.unload();
+            player.flvPlayer.detachMediaElement();
+            player.flvPlayer.destroy();
+          }
+        } catch (error) {
+          console.error(`清理播放器 ${index} 失败:`, error);
+        }
+      }
+    });
+    videoPlayers.value = [];
+    videoRefs.value = [];
   }
 
   videoUrl.value = '';
@@ -1253,8 +1519,17 @@ watch(selectedDamNode, async (newNode, oldNode) => {
     if (newNode.gateStationCode) {
       await fetchGateExtendedInfo(newNode.gateStationCode);
       await fetchControlDeviceCode(newNode.gateStationCode);
+      
       // 获取摄像设备列表
       await fetchCameraDevices(newNode.gateStationCode);
+      
+      // 查询完成后自动播放所有摄像设备的视频
+      if (cameraDevices.value && cameraDevices.value.length > 0) {
+        console.log('自动播放摄像设备视频，设备数量:', cameraDevices.value.length);
+        // 自动播放所有摄像设备
+        await handleMultipleCameraDeviceChange(cameraDevices.value);
+      }
+      
       // 启动定时器
       startGateExtInfoTimer(newNode.gateStationCode);
     }
@@ -1665,8 +1940,9 @@ onBeforeUnmount(async () => {
 .gate-controls {
   z-index: 1000;
   position:absolute;
-  top: 10px;
+  top: 100px;  
   left: 10px;
+  width:85px;
   text-align: center;
   // margin-top: auto; /* Push to bottom of flex column */
   padding-top: 30px;
@@ -1738,6 +2014,81 @@ onBeforeUnmount(async () => {
   overflow: hidden;
 }
 
+// 多视频播放区域样式
+.multi-video-display-area {
+  position: relative;
+  width: 100%;
+  min-height: 450px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.video-grid {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+  
+  &.single-video {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+    // height: 900px;
+  }
+  
+  &.dual-video {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+    // height: 450px;
+  }
+  
+  &.quad-video {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    height: 450px;
+  }
+  
+  &.multi-video {
+    grid-template-columns: repeat(3, 1fr);
+    grid-auto-rows: 200px;
+    height: auto;
+    // min-height: 450px;
+  }
+}
+
+.video-container {
+  position: relative;
+  background-color: #000;
+  border-radius: 4px;
+  overflow: hidden;
+  min-height: 450px;
+  .video-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+    color: white;
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+    
+    .video-title {
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    .el-button {
+      padding: 2px 6px;
+      font-size: 10px;
+      height: auto;
+      line-height: 1.2;
+    }
+  }
+}
+
 .video-player {
   width: 100%;
   height: 100%;
@@ -1759,7 +2110,7 @@ onBeforeUnmount(async () => {
 
 .video-status-overlay {
   position: absolute;
-  top: 10px;
+  bottom: 10px;
   right: 10px;
   background-color: rgba(0, 0, 0, 0.7);
   color: white;
