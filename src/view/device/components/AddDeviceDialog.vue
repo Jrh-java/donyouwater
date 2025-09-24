@@ -248,8 +248,12 @@ watch(dialogVisible, (newVal) => {
 
 // 初始化Cesium地图
 const initCesiumMap = () => {
+  // 如果viewer已存在，先销毁
+  if (viewer) {
+    viewer.destroy()
+    viewer = null
+  }
 
-  
   // 设置Cesium的默认访问令牌（如果需要）
   // Cesium.Ion.defaultAccessToken = 'your-cesium-ion-token'
     setTimeout(() => {
@@ -315,7 +319,7 @@ const onMapClick = (pickedPosition: Cesium.Cartesian3) => {
     viewer.entities.add({
       position: pickedPosition,
       billboard: {
-        image: '/src/assets/location-pin.svg', // 使用SVG图标
+        image: new URL('../../../assets/location-pin.svg', import.meta.url).href, // 使用SVG图标
         scale: 1.0,
         verticalOrigin: Cesium.VerticalOrigin.BOTTOM
       }

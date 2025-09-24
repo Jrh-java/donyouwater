@@ -164,11 +164,14 @@ const form = reactive({
 watch(() => props.visible, (newVal) => {
   dialogVisible.value = newVal
   if (newVal && props.deviceId) {
-    fetchDeviceDetail()
     fetchReservoirData()
     fetchDeviceCategoryOptions()
     nextTick(() => {
       initCesiumMap()
+      // 确保地图初始化完成后再获取设备详情
+      setTimeout(() => {
+        fetchDeviceDetail()
+      }, 200)
     })
   }
 })
@@ -344,7 +347,7 @@ const fetchDeviceDetail = async () => {
         viewer.entities.add({
           position: position,
           billboard: {
-            image: '/src/assets/location-pin.svg',
+            image: new URL('../../../assets/location-pin.svg', import.meta.url).href,
             scale: 1.0,
             verticalOrigin: Cesium.VerticalOrigin.BOTTOM
           }
@@ -388,6 +391,12 @@ const findReservoirLabel = (nodeId: string): string => {
 
 // 初始化Cesium地图
 const initCesiumMap = () => {
+  // 如果viewer已存在，先销毁
+  if (viewer) {
+    viewer.destroy()
+    viewer = null
+  }
+  
   setTimeout(() => {
     viewer = new Cesium.Viewer('viewDeviceMap', {
       homeButton: false,

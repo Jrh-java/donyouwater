@@ -15,6 +15,10 @@ onMounted(() => {
       el: "#addDeviceMap", //必填//有使用地图的情况一定要传地图的dom,不然会有很多问题 --eggsy
     },
     {
+      el: "#editDeviceMap", //必填//有使用地图的情况一定要传地图的dom,不然会有很多问题 --eggsy
+
+    },
+    {
       el: "#inspectionViewerMap", //必填//有使用地图的情况一定要传地图的dom,不然会有很多问题 --eggsy
 
     },

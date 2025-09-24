@@ -33,7 +33,7 @@
           <img src="@/assets/viewer/statistic.png" alt="statistic icon" class="statistic-icon" />
           <div class="statistic-text">
             <p class="statistic-label">风险告警</p>
-            <p class="statistic-value risk-warning">{{ riskAlerts }} <span class="statistic-unit">座</span></p>
+            <p class="statistic-value risk-warning">{{ riskAlerts }} <span class="statistic-unit"></span></p>
           </div>
         </div>
       </div>
@@ -56,7 +56,7 @@ const updateTime = ref(formatDateTime(new Date()));
 // 闸站统计数据
 const totalGateStations = ref(0);
 const onlineGateStations = ref(0);
-const riskAlerts = ref(2); // 风险告警数量暂时保持固定值
+const riskAlerts = ref(0); // 风险告警数量暂时保持固定值
 
 // 弹窗控制
 const showDevicePanelFlag = ref(false);
