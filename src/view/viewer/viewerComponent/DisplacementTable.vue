@@ -1,6 +1,15 @@
 <template>
   <div class="displacement-table-container">
-    <el-table :data="tableData" stripe style="width: 100%" :height="height" v-loading="tableLoading">
+    <el-table 
+      :data="tableData" 
+      stripe 
+      style="width: 100%" 
+      :height="height" 
+      v-loading="tableLoading"
+      element-loading-background="rgba(14, 42, 90, 0.8)"
+      element-loading-text="加载中..."
+      element-loading-spinner="el-icon-loading"
+    >
       <el-table-column type="index" label="序号"  width="80" :index="(index) => (pagination.page - 1) * pagination.limit + index + 1" />
       <el-table-column prop="displaceName" label="位移方向"  />
       <el-table-column prop="mvcTime" width="180"label="最后监测时间" />
@@ -225,7 +234,15 @@ defineExpose({
     }
     
     .el-loading-mask {
-      background-color: rgba(14, 42, 90, 0.8) !important;
+      .el-loading-spinner {
+        .el-loading-text {
+          color: #a0cfff !important;
+        }
+        
+        .circular {
+          color: #1890ff !important;
+        }
+      }
     }
   }
   

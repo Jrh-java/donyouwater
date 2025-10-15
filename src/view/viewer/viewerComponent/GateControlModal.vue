@@ -17,7 +17,7 @@
             <!-- 安全概况 -->
             <div class="safety-overview">
               <!-- <div class="section-title">安全概况</div> -->
-
+        
               <div class="safety-content">
                 <div class="safety-header">
                   <!-- <div class="reservoir-table">
@@ -48,6 +48,82 @@
                   <div class="monitoring-table">
                     <DisplacementTable :height="250" :show-pagination="false"
                       :filter-form="{ timeRange: '24h', direction: 'all' }" :device-code="selectedDeviceCode" />
+                  </div>
+
+                  <!-- 环境监测模块 -->
+                  <div class="environment-monitoring">
+         
+                    
+                    <!-- 环境设备选择 -->
+                    <div class="env-device-selector" style="margin: 10px; text-align: left;">
+                      <el-form :inline="true">
+                        <el-form-item label="选择环境设备" style="margin-left: 0;">
+                          <el-select v-model="selectedEnvDeviceCode" placeholder="请选择环境设备" :teleported="false"
+                            style="width: 200px;" @change="onEnvDeviceChange" :loading="envDeviceLoading">
+                            <el-option v-for="device in envDeviceList" :key="device.deviceCode" :label="device.deviceName"
+                              :value="device.deviceCode">
+                            </el-option>
+                          </el-select>
+                        </el-form-item>
+                      </el-form>
+                    </div>
+
+                    <!-- 环境指标卡片 -->
+                    <div class="env-metrics-grid" 
+                         v-loading="envDataLoading"
+                         element-loading-background="rgba(14, 42, 90, 0.8)"
+                         element-loading-text="加载中..."
+                         element-loading-spinner="el-icon-loading">
+                      <div class="env-metric-card">
+                        <div class="metric-header">
+                          <div class="metric-title">风速</div>
+                          <div class="metric-unit">m/s</div>
+                        </div>
+                        <div class="metric-content">
+                          <div class="metric-value">{{ envOverviewData.windSpeed.value }}</div>
+                        </div>
+                      </div>
+
+                      <div class="env-metric-card">
+                        <div class="metric-header">
+                          <div class="metric-title">气压</div>
+                          <div class="metric-unit">kPa</div>
+                        </div>
+                        <div class="metric-content">
+                          <div class="metric-value">{{ envOverviewData.pressure.value }}</div>
+                        </div>
+                      </div>
+
+                      <div class="env-metric-card">
+                        <div class="metric-header">
+                          <div class="metric-title">气温</div>
+                          <div class="metric-unit">°C</div>
+                        </div>
+                        <div class="metric-content">
+                          <div class="metric-value">{{ envOverviewData.temperature.value }}</div>
+                        </div>
+                      </div>
+
+                      <div class="env-metric-card">
+                        <div class="metric-header">
+                          <div class="metric-title">湿度</div>
+                          <div class="metric-unit">%</div>
+                        </div>
+                        <div class="metric-content">
+                          <div class="metric-value">{{ envOverviewData.humidity.value }}</div>
+                        </div>
+                      </div>
+
+                      <div class="env-metric-card">
+                        <div class="metric-header">
+                          <div class="metric-title">降水</div>
+                          <div class="metric-unit">mm</div>
+                        </div>
+                        <div class="metric-content">
+                          <div class="metric-value">{{ envOverviewData.rainfall.value }}</div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -174,12 +250,11 @@
                 </div>
                 <el-descriptions title="闸门情况" :column="2" border class="gate-status-info">
                   <el-descriptions-item label="闸门控制">
-                    <el-tag
-                      :type="currentGateInfo && String(currentGateInfo.isHandle) === '0.0' ? 'success' : 'warning'">
+                    
                       {{ currentGateInfo && String(currentGateInfo.isHandle) === '0.0' ? '自动可远程' : '手动' }}
-                    </el-tag>
+                  
                   </el-descriptions-item>
-                  <el-descriptions-item label="最新时间">{{ currentGateInfo ? currentGateInfo.crtTime : '--' }}
+                  <el-descriptions-item label="最新时间" style="color: white !important;">{{ currentGateInfo ? currentGateInfo.crtTime : '--' }}
                   </el-descriptions-item>
                   <el-descriptions-item label="河道液位">{{ gateExtInfo && gateExtInfo.length > 0 ?
                     gateExtInfo[0].riverLevel : '--'
@@ -262,34 +337,30 @@
               <el-col :span="13" class="content-col">
                 <div class="column-header">
                   <span>实时视频</span>
-                  <!-- 摄像枪选择下拉框 -->
-                  <el-select v-model="selectedCameraDevice" placeholder="请选择摄像枪" style="width: 200px;"
-                    :disabled="!cameraDevices.length" @change="handleCameraDeviceChange" :teleported="false">
-                    <el-option v-for="device in cameraDevices" :key="device.deviceCode" :label="device.deviceName"
-                      :value="device.deviceCode"></el-option>
-                  </el-select>
                 </div>
                 <div class="gate-external-monitor">
-                  <!-- 视频播放区域 -->
-                  <div class="video-display-area">
-                    <video ref="videoElement" class="video-player" controls muted autoplay
-                      style="width: 100%; height: 450px; background-color: #000;">
-                      您的浏览器不支持视频播放
-                    </video>
-                    <div v-if="!videoUrl" class="video-placeholder">
+                  <!-- 多视频播放区域 -->
+                  <div class="multi-video-display-area">
+                    <div v-if="videoPlayers.length === 0" class="video-placeholder">
                       <div style="text-align: center; color: #999;">
                         <div style="font-size: 48px; margin-bottom: 10px;">📹</div>
-                        <div style="font-size: 16px;">请选择摄像枪查看视频</div>
+                        <div style="font-size: 16px;">暂无视频播放</div>
                       </div>
                     </div>
-                    <div class="video-status-overlay">
-                      <span v-if="connectTime">连接时间: {{ connectTime }}</span>
+                    <div v-else class="video-grid" :class="getVideoGridClass()">
+                      <div v-for="(player, index) in videoPlayers" :key="player.deviceCode" class="video-container">
+                        <div class="video-header">
+                          <span class="video-title">{{ player.deviceName }}</span>
+                        </div>
+                        <video :ref="el => setVideoRef(el, index)" class="video-player" controls muted autoplay
+                          style="width: 100%; height: 100%; background-color: #000;">
+                          您的浏览器不支持视频播放
+                        </video>
+                        <div class="video-status-overlay">
+                          <span v-if="player.connectTime">连接时间: {{ player.connectTime }}</span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div style="text-align: left; margin-top: 5px;">
-                    <el-tag type="success"><el-icon>
-                        <CaretRight />
-                      </el-icon> 实时视频</el-tag>
                   </div>
                 </div>
 
@@ -366,7 +437,7 @@
 import { ref, watch, computed, reactive, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { Picture, VideoCamera, CaretRight, Close, Histogram, DataLine, InfoFilled } from '@element-plus/icons-vue';
 import { ElMessage, ElDialog, ElInput, ElButton, ElDivider } from 'element-plus';
-import { gateOnOrOff, getMonitorDevicesByGateStationCodeApi, sendDeviceCommandApi, getDeviceManagementInfo, getGateExtInfo, getGateTaskList, taskSend, setGateOpeningRate, getGateControlCallback, getOsmoticPressureWeekMaxApi } from '@/api/reservoir';
+import { gateOnOrOff, getMonitorDevicesByGateStationCodeApi, sendDeviceCommandApi, getDeviceManagementInfo, getGateExtInfo, getGateTaskList, taskSend, setGateOpeningRate, getOsmoticPressureWeekMaxApi, getEnvMcvTitleCollect, getCurrentPrecipitation } from '@/api/reservoir';
 import { getDeviceManagementPage } from '@/api/device';
 import DisplacementTable from '@/components/DisplacementTable.vue';
 import flvjs from 'flv.js';
@@ -432,7 +503,7 @@ const gatePortOptions = ref([
 // 设备编码（用于控制操作）
 const controlDeviceCode = ref('');
 
-// 摄像设备相关
+// 视频播放相关
 const cameraDevices = ref([]);
 const selectedCameraDevice = ref('');
 const videoElement = ref(null);
@@ -441,6 +512,10 @@ const videoUrl = ref('');
 const connectionStatus = ref('未连接');
 const connectTime = ref('');
 const isPlaying = ref(false);
+
+// 多视频播放相关
+const videoPlayers = ref([]);
+const videoRefs = ref([]);
 
 // 任务计划相关
 const taskList = ref([]);
@@ -477,6 +552,36 @@ const pendingAction = ref('');
 // 安全概况相关
 const deviceList = ref([]);
 const selectedDeviceCode = ref('');
+
+// 环境监测相关
+const envDeviceList = ref([]);
+const selectedEnvDeviceCode = ref('');
+const envDeviceLoading = ref(false);
+const envDataLoading = ref(false);
+
+// 环境数据
+const envOverviewData = ref({
+  pressure: {
+    value: 0,
+    state: 'normal'
+  },
+  windSpeed: {
+    value: 0,
+    state: 'normal'
+  },
+  temperature: {
+    value: 0,
+    state: 'normal'
+  },
+  humidity: {
+    value: 0,
+    state: 'normal'
+  },
+  rainfall: {
+    value: 0,
+    state: 'normal'
+  }
+});
 
 // 渗压监测相关
 const seepagePressureChart = ref();
@@ -960,23 +1065,8 @@ const setGateOpeningLogic = async () => {
       const promises = operations.map(async (op) => {
         try {
           await setGateOpeningRate(controlDeviceCode.value, op.devpoint, op.value);
-          
-          // 检查指令发送结果
-          try {
-             await new Promise(resolve => setTimeout(resolve, 2000));
-            const callbackResult = await getGateControlCallback(controlDeviceCode.value, op.devpoint);
-            if (callbackResult === "1") {
-              successCount++;
-              return { success: true, name: op.name };
-            } else {
-              errorMessages.push(`${op.name}控制指令发送失败`);
-              return { success: false, name: op.name };
-            }
-          } catch (callbackError) {
-            console.error(`获取${op.name}指令回调结果失败:`, callbackError);
-            errorMessages.push(`${op.name}指令已发送，但无法确认执行状态`);
-            return { success: false, name: op.name };
-          }
+          successCount++;
+          return { success: true, name: op.name };
         } catch (error) {
           console.error(`${op.name}开度控制失败:`, error);
           errorMessages.push(`${op.name}开度控制失败: ${error.message || '未知错误'}`);
@@ -1026,23 +1116,9 @@ const setGateOpeningLogic = async () => {
       // 调用封装的接口发送控制指令
       await setGateOpeningRate(controlDeviceCode.value, devpoint, gateOpeningForm.openingValue.toString());
 
-      // 检查指令发送结果
-      try {
-         await new Promise(resolve => setTimeout(resolve, 2000));
-        const callbackResult = await getGateControlCallback(controlDeviceCode.value, devpoint);
-        if (callbackResult === "1") {
-          ElMessage.success('闸口开度控制指令发送成功');
-          // 只有成功时才清空输入框
-          gateOpeningForm.openingValue = null;
-        } else {
-          ElMessage.error('闸口开度控制指令发送失败');
-          // 失败时不清空输入框，让用户可以重试
-        }
-      } catch (callbackError) {
-        console.error('获取指令回调结果失败:', callbackError);
-        ElMessage.warning('指令已发送，但无法确认执行状态');
-        // 无法确认状态时不清空输入框
-      }
+      ElMessage.success('闸口开度控制指令发送成功');
+      // 清空输入框
+      gateOpeningForm.openingValue = null;
     }
 
   } catch (error) {
@@ -1168,10 +1244,10 @@ const fetchCameraDevices = async (gateStationCode) => {
       cameraDevices.value = devices;
       console.log('获取到摄像设备:', devices.length, '个');
 
-      // 如果有设备且当前没有选中设备，自动选择第一个
-      if (devices.length > 0 && !selectedCameraDevice.value) {
-        selectedCameraDevice.value = devices[0].deviceCode;
-        handleCameraDeviceChange(devices[0].deviceCode);
+      // 自动播放所有摄像设备的视频
+      if (devices.length > 0) {
+        console.log('自动播放摄像设备视频，设备数量:', devices.length);
+        await handleMultipleCameraDeviceChange(devices);
       }
     } else {
       cameraDevices.value = [];
@@ -1183,7 +1259,234 @@ const fetchCameraDevices = async (gateStationCode) => {
   }
 };
 
-// 处理摄像设备变化
+// 处理多个摄像设备变化（新增函数）
+const handleMultipleCameraDeviceChange = async (devices) => {
+  if (!devices || devices.length === 0) {
+    console.log('没有摄像设备');
+    return;
+  }
+
+  // 清空现有的视频播放器
+  cleanup();
+  videoPlayers.value = [];
+  videoRefs.value = [];
+
+  console.log('开始播放多个摄像设备视频:', devices);
+
+  // 为每个设备创建视频播放器
+  for (let i = 0; i < devices.length; i++) {
+    const device = devices[i];
+    const player = {
+      deviceCode: device.deviceCode,
+      deviceName: device.deviceName,
+      flvPlayer: null,
+      connectTime: '',
+      videoUrl: ''
+    };
+    
+    videoPlayers.value.push(player);
+    
+    // 等待DOM更新后初始化播放器
+    await nextTick();
+    
+    // 发送控制命令并初始化播放器
+    await sendControlCommandForDevice(device.deviceCode, i);
+  }
+};
+
+// 为特定设备发送控制命令（新增函数）
+const sendControlCommandForDevice = async (deviceCode, playerIndex) => {
+  try {
+    const topic = `YN/0000/769834/control/${deviceCode}`;
+    const payloadStr = JSON.stringify({
+      "command": "config",
+      "rtmpCtrl": {
+        "rtmpEnable": 1,
+        "rtmpServer": "119.3.245.90",
+        "rtmpPort": 1935,
+        "releaseTime": 5
+      }
+    });
+
+    console.log(`发送摄像设备 ${deviceCode} 控制命令`);
+    const result = await sendDeviceCommandApi(topic, payloadStr);
+    console.log('发送控制命令结果:', result);
+
+    if (result === "发送取流命令成功！") {
+      // 构建FLV视频流地址
+      const flvUrl = `http://220.250.41.136:8866/live?url=rtmp://119.3.245.90/live/${deviceCode}`;
+      console.log('准备播放FLV流:', flvUrl);
+
+      // 更新播放器信息
+      if (videoPlayers.value[playerIndex]) {
+        videoPlayers.value[playerIndex].videoUrl = flvUrl;
+        videoPlayers.value[playerIndex].connectTime = new Date().toLocaleTimeString();
+      }
+
+      // 等待2秒让设备准备好，然后初始化播放器
+      setTimeout(() => {
+        initFLVPlayerForDevice(flvUrl, playerIndex);
+      }, 2000);
+    } else {
+      ElMessage.error(`摄像设备 ${deviceCode} 控制失败`);
+    }
+  } catch (error) {
+    console.error(`发送控制命令失败:`, error);
+    ElMessage.error(`摄像设备 ${deviceCode} 控制失败`);
+  }
+};
+
+// 为特定设备初始化FLV播放器（新增函数）
+const initFLVPlayerForDevice = async (videoUrl, playerIndex) => {
+  try {
+    // 等待video元素准备就绪
+    await nextTick();
+    
+    const videoElement = videoRefs.value[playerIndex];
+    if (!videoElement) {
+      console.error(`视频元素未找到，索引: ${playerIndex}`);
+      return;
+    }
+
+    if (!videoUrl) {
+      console.error('视频URL为空');
+      return;
+    }
+
+    console.log(`初始化FLV播放器 ${playerIndex}:`, videoUrl);
+
+    if (flvjs.isSupported()) {
+      // 如果已有播放器，先销毁
+      if (videoPlayers.value[playerIndex] && videoPlayers.value[playerIndex].flvPlayer) {
+        const existingPlayer = videoPlayers.value[playerIndex].flvPlayer;
+        try {
+          if (!existingPlayer.destroyed) {
+            existingPlayer.pause();
+            existingPlayer.unload();
+            existingPlayer.detachMediaElement();
+            existingPlayer.destroy();
+          }
+        } catch (e) {
+          console.warn(`销毁已有播放器 ${playerIndex} 时出错:`, e);
+        }
+        videoPlayers.value[playerIndex].flvPlayer = null;
+      }
+
+      const player = flvjs.createPlayer({
+        type: 'flv',
+        url: videoUrl,
+        isLive: true,
+        hasAudio: false,
+        hasVideo: true,
+        enableWorker: false,
+        enableStashBuffer: false,
+        stashInitialSize: 128,
+        autoCleanupSourceBuffer: true
+      });
+
+      // 绑定到video元素
+      player.attachMediaElement(videoElement);
+
+      // 事件监听
+      player.on(flvjs.Events.LOADING_COMPLETE, () => {
+        console.log(`播放器 ${playerIndex} 加载完成`);
+      });
+
+      player.on(flvjs.Events.MEDIA_INFO, (mediaInfo) => {
+        console.log(`播放器 ${playerIndex} 媒体信息:`, mediaInfo);
+      });
+
+      player.on(flvjs.Events.ERROR, (errorType, errorDetail, errorInfo) => {
+        console.error(`播放器 ${playerIndex} 错误:`, errorType, errorDetail, errorInfo);
+        
+        let errorMessage = '视频播放失败';
+        let shouldReconnect = false;
+
+        if (errorType === 'MediaError') {
+          if (errorDetail === 'FormatUnsupported') {
+            errorMessage = `播放器 ${playerIndex} 视频格式不支持，请检查视频流地址`;
+          } else if (errorDetail === 'NetworkError') {
+            errorMessage = `播放器 ${playerIndex} 网络连接失败，正在尝试重连...`;
+            shouldReconnect = true;
+          }
+        } else if (errorType === 'NetworkError') {
+          // 检测到网络错误，可能是自动断流
+          errorMessage = `播放器 ${playerIndex} 视频流已断开，正在尝试重连...`;
+          shouldReconnect = true;
+        }
+
+        if (shouldReconnect && videoPlayers.value[playerIndex]) {
+          const deviceCode = videoPlayers.value[playerIndex].deviceCode;
+          console.log(`检测到播放器 ${playerIndex} 自动断流，尝试重连设备: ${deviceCode}`);
+          ElMessage.warning(`播放器 ${playerIndex} 视频流已断开，正在尝试重连...`);
+          
+          // 延迟2秒后重新连接
+          setTimeout(() => {
+            if (videoPlayers.value[playerIndex] && deviceCode) {
+              console.log(`重新发送控制命令: ${deviceCode}`);
+              sendControlCommandForDevice(deviceCode, playerIndex);
+            }
+          }, 2000);
+        } else {
+          ElMessage.error(errorMessage);
+        }
+      });
+
+      // 加载并播放
+      player.load();
+      
+      // 等待一段时间后开始播放
+      setTimeout(() => {
+        if (videoPlayers.value[playerIndex]) {
+          player.play();
+          videoPlayers.value[playerIndex].flvPlayer = player;
+        }
+      }, 1000);
+
+    } else {
+      console.error('浏览器不支持FLV播放');
+      ElMessage.error('浏览器不支持FLV播放');
+    }
+  } catch (error) {
+    console.error(`FLV播放器 ${playerIndex} 初始化失败:`, error);
+    ElMessage.error(`视频播放器 ${playerIndex} 初始化失败`);
+  }
+};
+
+// 设置视频引用
+const setVideoRef = (el, index) => {
+  if (el) {
+    videoRefs.value[index] = el;
+  }
+};
+
+// 移除视频播放器
+const removeVideoPlayer = (index) => {
+  if (videoPlayers.value[index] && videoPlayers.value[index].flvPlayer) {
+    const player = videoPlayers.value[index].flvPlayer;
+    try {
+      player.pause();
+      player.unload();
+      player.detachMediaElement();
+      player.destroy();
+    } catch (error) {
+      console.error(`移除播放器 ${index} 失败:`, error);
+    }
+  }
+  videoPlayers.value.splice(index, 1);
+  videoRefs.value.splice(index, 1);
+};
+
+// 获取视频网格样式类
+const getVideoGridClass = () => {
+  const count = videoPlayers.value.length;
+  if (count === 1) return 'single-video';
+  if (count === 2) return 'dual-video';
+  if (count <= 4) return 'quad-video';
+  return 'multi-video';
+};
+
+// 处理摄像设备变化（保留原有函数但不再使用）
 const handleCameraDeviceChange = (deviceCode) => {
   if (!deviceCode) return;
 
@@ -1347,6 +1650,7 @@ const initFLVPlayer = (url) => {
 const cleanup = () => {
   console.log('清理FLV播放器资源');
 
+  // 清理原有的单个播放器
   if (flvPlayer.value) {
     try {
       if (flvPlayer.value.type === 'FlvPlayer') {
@@ -1360,6 +1664,26 @@ const cleanup = () => {
     } finally {
       flvPlayer.value = null;
     }
+  }
+
+  // 清理多个播放器
+  if (videoPlayers.value && videoPlayers.value.length > 0) {
+    videoPlayers.value.forEach((player, index) => {
+      if (player.flvPlayer) {
+        try {
+          if (!player.flvPlayer.destroyed) {
+            player.flvPlayer.pause();
+            player.flvPlayer.unload();
+            player.flvPlayer.detachMediaElement();
+            player.flvPlayer.destroy();
+          }
+        } catch (error) {
+          console.error(`清理播放器 ${index} 失败:`, error);
+        }
+      }
+    });
+    videoPlayers.value = [];
+    videoRefs.value = [];
   }
 
   if (videoElement.value) {
@@ -1440,9 +1764,83 @@ const fetchDeviceList = async () => {
   }
 };
 
+// 获取环境设备列表
+const fetchEnvDeviceList = async () => {
+  try {
+    envDeviceLoading.value = true;
+    const params = {
+      page: 1,
+      limit: 100,
+      mcsType: 'env'
+    };
+
+    const response = await getDeviceManagementPage(params);
+    if (response && response.list) {
+      envDeviceList.value = response.list;
+      // 如果有设备且当前没有选中设备，默认选中第一个
+      if (envDeviceList.value.length > 0 && !selectedEnvDeviceCode.value) {
+        selectedEnvDeviceCode.value = envDeviceList.value[0].deviceCode;
+        // 自动获取第一个设备的环境数据
+        await fetchEnvironmentData(selectedEnvDeviceCode.value);
+      }
+    }
+  } catch (error) {
+    console.error('获取环境设备列表失败:', error);
+  } finally {
+    envDeviceLoading.value = false;
+  }
+};
+
+// 环境设备变化处理
+const onEnvDeviceChange = async () => {
+  if (selectedEnvDeviceCode.value) {
+    await fetchEnvironmentData(selectedEnvDeviceCode.value);
+  }
+};
+
+// 获取环境数据
+const fetchEnvironmentData = async (deviceCode) => {
+  if (!deviceCode) return;
+  
+  try {
+    envDataLoading.value = true;
+    
+    // 获取环境概览数据
+    const envResponse = await getEnvMcvTitleCollect({ id: deviceCode });
+    if (envResponse) {
+      envOverviewData.value.windSpeed.value = envResponse.windSpeed || 0;
+      envOverviewData.value.pressure.value = envResponse.airPressure || 0;
+      envOverviewData.value.temperature.value = envResponse.temperature || 0;
+      envOverviewData.value.humidity.value = envResponse.humidity || 0;
+    }
+    
+    // 获取降水量数据
+    const precipitationResponse = await getCurrentPrecipitation({ id: deviceCode });
+    if (precipitationResponse) {
+      envOverviewData.value.rainfall.value = precipitationResponse.precipitation || 0;
+    }
+    
+  } catch (error) {
+    console.error('获取环境数据失败:', error);
+    // 设置默认值
+    envOverviewData.value = {
+      pressure: { value: 0, state: 'normal' },
+      windSpeed: { value: 0, state: 'normal' },
+      temperature: { value: 0, state: 'normal' },
+      humidity: { value: 0, state: 'normal' },
+      rainfall: { value: 0, state: 'normal' }
+    };
+  } finally {
+    envDataLoading.value = false;
+  }
+};
+
+
+
 // 获取渗压数据
 const fetchOsmoticPressureData = async (gateStationCode) => {
   try {
+       const gateStationCode = 'FJ.JODY.FH01.Z01.STATION' //临时替换固定值
     const data = await getOsmoticPressureWeekMaxApi(gateStationCode);
     updateSeepagePressureChart(data);
   } catch (error) {
@@ -1647,6 +2045,7 @@ const initializeModal = (gateStationCode) => {
   fetchTaskList(gateStationCode);
   fetchDeviceList();
   fetchOsmoticPressureData(gateStationCode);
+  fetchEnvDeviceList();
 
   // 初始化图表
   nextTick(() => {
@@ -1668,7 +2067,7 @@ onBeforeUnmount(() => {
   top: 10%;
   left: 15%;
 
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.3);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1676,7 +2075,8 @@ onBeforeUnmount(() => {
 }
 
 .gate-control-modal {
-  background: #ffffff;
+  background: #0a214d; /* Dark blue background */
+  color: white;
   border-radius: 8px;
 
   max-width: 1500px;
@@ -1685,7 +2085,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 .modal-header {
@@ -1693,12 +2093,12 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   align-items: center;
   padding: 20px 24px;
-  border-bottom: 1px solid #e4e7ed;
-  background: #f5f7fa;
+  border-bottom: 1px solid #1e4a8c;
+  background: #10306a; /* Slightly lighter blue for header */
 }
 
 .modal-title {
-  color: #303133;
+  color: white;
   font-size: 18px;
   font-weight: 600;
   margin: 0;
@@ -1707,7 +2107,7 @@ onBeforeUnmount(() => {
 .close-button {
   background: none;
   border: none;
-  color: #909399;
+  color: white;
   font-size: 20px;
   cursor: pointer;
   padding: 4px;
@@ -1715,8 +2115,8 @@ onBeforeUnmount(() => {
   transition: all 0.2s;
 
   &:hover {
-    color: #409eff;
-    background: #ecf5ff;
+    color: #1890ff;
+    background: #153e7a;
   }
 }
 
@@ -1724,9 +2124,9 @@ onBeforeUnmount(() => {
   flex: 1;
   padding: 24px;
   overflow-y: auto;
-  background: #ffffff;
+  background: #0a214d;
   max-height: 800px;
-  color: #303133;
+  color: white;
 }
 
 .content-col {
@@ -1739,12 +2139,12 @@ onBeforeUnmount(() => {
   align-items: center;
   margin-bottom: 20px;
   padding-bottom: 10px;
-  border-bottom: 2px solid #e4e7ed;
+  border-bottom: 2px solid #1e4a8c;
 
   span {
     font-size: 18px;
     font-weight: 600;
-    color: #303133;
+    color: white;
   }
 }
 
@@ -1757,7 +2157,7 @@ onBeforeUnmount(() => {
 
 .custom-divider {
   height: 80%;
-  border-color: #e4e7ed;
+  border-color: #1e4a8c;
 }
 
 .gate-controls {
@@ -1788,19 +2188,20 @@ onBeforeUnmount(() => {
     gap: 20px;
 
     .gate-info {
-      background: rgba(255, 255, 255, 0.9);
+      background: rgba(14, 42, 90, 0.9); /* Blue background with transparency */
+      border: 1px solid #1e4a8c;
       border-radius: 8px;
       padding: 12px 16px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
       min-width: 120px;
 
       .gate-info-title {
         font-weight: bold;
         font-size: 14px;
-        color: #333;
+        color: #a0cfff;
         margin-bottom: 8px;
         text-align: center;
-        border-bottom: 1px solid #e0e0e0;
+        border-bottom: 1px solid #1e4a8c;
         padding-bottom: 4px;
       }
 
@@ -1811,12 +2212,12 @@ onBeforeUnmount(() => {
         font-size: 14px;
 
         .info-label {
-          color: #666;
+          color: #a0cfff;
           margin-right: 8px;
         }
 
         .info-value {
-          color: #409eff;
+          color: #ffffff;
           font-weight: 500;
         }
       }
@@ -1882,17 +2283,80 @@ onBeforeUnmount(() => {
 
 .gate-status-info {
   margin: 20px 0;
+  
+  :deep(.el-descriptions__header) {
+    .el-descriptions__title {
+      color: white !important;
+    }
+  }
+  
+  :deep(.el-descriptions__body) {
+    .el-descriptions__table {
+      .el-descriptions__cell {
+        background-color: #0e2a5a !important;
+        border-color: #1e4a8c !important;
+        color:#fff;
+        .el-descriptions__label {
+          color: #a0cfff !important;
+        }
+        
+        .el-descriptions__content {
+          color: white !important;
+        }
+      }
+    }
+  }
 }
 
 .gate-port-selection {
   :deep(.el-form-item__label) {
-    color: #303133;
+    color: #a0cfff !important;
+  }
+  
+  :deep(.el-select) {
+    .el-input {
+      .el-input__wrapper {
+        background-color: #071a3b !important;
+        border: 1px solid #1e4a8c !important;
+        
+        .el-input__inner {
+          background-color: transparent !important;
+          color: white !important;
+        }
+        
+        .el-input__suffix {
+          .el-input__suffix-inner {
+            .el-select__caret {
+              color: #a0cfff !important;
+            }
+          }
+        }
+      }
+    }
   }
 }
 
 .gate-opening-control {
   :deep(.el-form-item__label) {
-    color: #303133;
+    color: #a0cfff !important;
+  }
+  
+  :deep(.el-input) {
+    .el-input__wrapper {
+      background-color: #071a3b !important;
+      border: 1px solid #1e4a8c !important;
+      
+      .el-input__inner {
+        background-color: transparent !important;
+        color: white !important;
+      }
+      
+      .el-input__suffix {
+        .el-input__suffix-inner {
+          color: #a0cfff !important;
+        }
+      }
+    }
   }
 }
 
@@ -1934,31 +2398,72 @@ onBeforeUnmount(() => {
   align-items: center;
 
   span {
-    color: #303133;
+    color: white;
     font-weight: 600;
   }
 }
 
 /* Element Plus 默认主题样式 */
 :deep(.el-divider--vertical) {
-  border-color: #e4e7ed;
+  border-color: #1e4a8c;
 }
 
 :deep(.el-tabs__nav-scroll) {
   padding-left: 25px;
 }
 
+:deep(.el-tabs__header) {
+  background-color: #0a214d;
+  .el-tabs__nav-wrap:after {
+    width:0px;
+  }
+  .el-tabs__nav-wrap {
+    background-color: #0a214d;
+    
+    .el-tabs__nav {
+      background-color: #0a214d;
+      
+      .el-tabs__item {
+        color: #a0cfff !important;
+        background-color: transparent;
+        border-bottom: 2px solid #1e4a8c;
+        
+        &.is-active {
+          color: white !important;
+          // background-color: #1e4a8c;
+          border-bottom-color: #1e4a8c;
+        }
+        
+        &:hover:not(.is-active) {
+          color: white !important;
+          background-color: #153e7a;
+        }
+      }
+    }
+  }
+  
+  .el-tabs__active-bar {
+    background-color: #1890ff;
+  }
+}
+
+:deep(.el-tabs__content) {
+  background-color: #0a214d;
+  color: white;
+}
+
 /* 安全概况样式 */
 .safety-overview {
-  background: white;
+  background: #0e2a5a;
+  border: 1px solid #1e4a8c;
   border-radius: 8px;
   padding: 20px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
 
   .section-title {
     font-size: 18px;
     font-weight: 600;
-    color: #303133;
+    color: white;
     margin-bottom: 16px;
   }
 
@@ -1977,7 +2482,7 @@ onBeforeUnmount(() => {
     .stats-divider {
       width: 100%;
       height: 1px;
-      background-color: #e4e7ed;
+      background-color: #1e4a8c;
       margin: 15px 0;
     }
 
@@ -1996,7 +2501,7 @@ onBeforeUnmount(() => {
 
         .label {
           font-size: 22px;
-          color: #909399;
+          color: #a0cfff;
         }
 
         .value {
@@ -2020,7 +2525,7 @@ onBeforeUnmount(() => {
       .stat-divider-vertical {
         width: 1px;
         height: 40px;
-        background-color: #e4e7ed;
+        background-color: #1e4a8c;
       }
     }
 
@@ -2040,8 +2545,8 @@ onBeforeUnmount(() => {
 
       .seepage-card-with-chart {
         flex: 1;
-        background: #ffffff;
-        border: 1px solid #e4e7ed;
+        background: #0e2a5a;
+        border: 1px solid #1e4a8c;
         border-radius: 8px;
         overflow: hidden;
 
@@ -2050,20 +2555,20 @@ onBeforeUnmount(() => {
           justify-content: space-between;
           align-items: center;
           padding: 16px 20px;
-          background: #f8f9fa;
-          border-bottom: 1px solid #e4e7ed;
+          background: #10306a;
+          border-bottom: 1px solid #1e4a8c;
 
           .card-title {
             font-size: 16px;
             font-weight: 600;
-            color: #303133;
+            color: white;
             margin: 0;
             display: flex;
             align-items: center;
             gap: 8px;
 
             .el-icon {
-              color: #409eff;
+              color: #1890ff;
             }
           }
 
@@ -2071,20 +2576,21 @@ onBeforeUnmount(() => {
             padding: 6px 12px;
             font-size: 12px;
             border-radius: 4px;
-            background: #409eff;
+            background: #1890ff;
             color: white;
             border: none;
             cursor: pointer;
             transition: all 0.2s;
 
             &:hover {
-              background: #337ecc;
+              background: #40a9ff;
             }
           }
         }
 
         .card-content {
           padding: 20px;
+          background: #0e2a5a;
 
           .status-info {
             display: flex;
@@ -2097,7 +2603,7 @@ onBeforeUnmount(() => {
 
               .label {
                 font-size: 12px;
-                color: #909399;
+                color: #a0cfff;
                 margin-bottom: 4px;
               }
 
@@ -2122,7 +2628,7 @@ onBeforeUnmount(() => {
 
           .chart-title {
             font-size: 14px;
-            color: #606266;
+            color: #a0cfff;
             margin-bottom: 12px;
             text-align: center;
           }
@@ -2138,12 +2644,12 @@ onBeforeUnmount(() => {
             align-items: center;
             justify-content: center;
             height: 200px;
-            color: #909399;
+            color: #a0cfff;
 
             .el-icon {
               font-size: 48px;
               margin-bottom: 12px;
-              color: #c0c4cc;
+              color: #1e4a8c;
             }
 
             .tip-text {
@@ -2156,28 +2662,523 @@ onBeforeUnmount(() => {
   }
 }
 
+// 多视频播放区域样式
+.multi-video-display-area {
+  position: relative;
+  width: 100%;
+  min-height: 450px;
+  border: 1px solid #1e4a8c;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #071a3b;
+}
+
+.video-grid {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+  
+  &.single-video {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+  }
+  
+  &.dual-video {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+  
+  &.quad-video {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    height: 450px;
+  }
+  
+  &.multi-video {
+    grid-template-columns: repeat(3, 1fr);
+    grid-auto-rows: 200px;
+    height: auto;
+  }
+}
+
+.video-container {
+  position: relative;
+  background-color: #000;
+  border-radius: 4px;
+  overflow: hidden;
+  min-height: 450px;
+  
+  .video-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+    color: white;
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+    
+    .video-title {
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    .video-status {
+      font-size: 11px;
+      opacity: 0.8;
+    }
+  }
+  
+  video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background-color: #000;
+  }
+  
+  .video-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 14px;
+    z-index: 5;
+  }
+  
+  .video-error {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #f56c6c;
+    font-size: 14px;
+    text-align: center;
+    z-index: 5;
+  }
+  
+  .no-device-tip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: #a0cfff;
+
+    .el-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+      color: #1e4a8c;
+    }
+
+    .tip-text {
+      font-size: 14px;
+    }
+  }
+}
+
 // 闸门详情内容区域样式
 .gate-details-content {
-width: 1500px;
-    height: 800px;
+  width: 1500px;
+  height: 800px;
   overflow-y: auto;
   padding-right: 8px;
+  background: #0e2a5a;
+  color: white;
 
   &::-webkit-scrollbar {
     width: 6px;
   }
 
   &::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: #1e4a8c;
     border-radius: 3px;
   }
 
   &::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
+    background: #1890ff;
     border-radius: 3px;
 
     &:hover {
-      background: #a8a8a8;
+      background: #40a9ff;
+    }
+  }
+}
+
+/* Element Plus 组件样式覆盖 */
+:deep(.el-descriptions) {
+  .el-descriptions__header {
+    .el-descriptions__title {
+      color: white !important;
+      font-weight: 600;
+    }
+  }
+
+  .el-descriptions__body {
+    .el-descriptions__table {
+      .el-descriptions__cell {
+        border-color: #1e4a8c;
+
+        .el-descriptions__label {
+          color: #909399 !important; /* 改为灰色 */
+          background-color: #10306a;
+          font-weight: 500;
+        }
+
+        .el-descriptions__content {
+          color: white !important;
+          background-color: #0e2a5a;
+          
+          /* 确保内容中的文本是白色，但排除el-tag */
+          span:not(.el-tag), div:not(.el-tag), p:not(.el-tag) {
+            color: white !important;
+          }
+          
+          /* 保持el-tag的原有颜色 */
+          .el-tag {
+            color: inherit !important;
+            
+            &.el-tag--success {
+              color: #67c23a !important;
+              background-color: #f0f9ff !important;
+              border-color: #67c23a !important;
+            }
+            
+            &.el-tag--warning {
+              color: #e6a23c !important;
+              background-color: #fdf6ec !important;
+              border-color: #e6a23c !important;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/* 针对闸门情况描述的特殊样式 */
+:deep(.gate-status-info) {
+  .el-descriptions__content {
+    color: white !important;
+ 
+    }
+  }
+
+
+:deep(.el-form) {
+  .el-form-item {
+    .el-form-item__label {
+      color: white;
+    }
+  }
+}
+
+:deep(.el-select) {
+  .el-input__wrapper {
+    background-color: #071a3b;
+    border: 1px solid #1e4a8c;
+    box-shadow: none;
+
+    &:hover {
+      border-color: #1890ff;
+    }
+
+    &.is-focus {
+      border-color: #1890ff;
+      box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+    }
+
+    .el-input__inner {
+      color: white;
+      background-color: transparent;
+
+      &::placeholder {
+        color: #a0cfff;
+      }
+    }
+
+    .el-input__suffix {
+      .el-input__suffix-inner {
+        .el-select__caret {
+          color: #a0cfff;
+        }
+      }
+    }
+  }
+}
+
+:deep(.el-select-dropdown) {
+  background-color: #071a3b;
+  border: 1px solid #1e4a8c;
+
+  .el-select-dropdown__item {
+    color: white;
+    background-color: transparent;
+
+    &:hover {
+      background-color: #1e4a8c;
+    }
+
+    &.selected {
+      background-color: #1890ff;
+      color: white;
+    }
+  }
+}
+
+:deep(.el-button) {
+  &.el-button--primary {
+    background-color: #1890ff;
+    border-color: #1890ff;
+
+    &:hover {
+      background-color: #40a9ff;
+      border-color: #40a9ff;
+    }
+
+    &:active {
+      background-color: #096dd9;
+      border-color: #096dd9;
+    }
+  }
+
+  &.el-button--default {
+    background-color: #071a3b;
+    border-color: #1e4a8c;
+    color: white;
+
+    &:hover {
+      background-color: #1e4a8c;
+      border-color: #1890ff;
+      color: white;
+    }
+  }
+}
+
+:deep(.el-table) {
+  background-color: #0e2a5a;
+  color: white;
+
+  .el-table__header {
+    background-color: #10306a;
+
+    th {
+      background-color: #10306a;
+      color: white;
+      border-bottom: 1px solid #1e4a8c;
+    }
+  }
+
+  .el-table__body {
+    tr {
+      background-color: #0e2a5a;
+
+      &:hover {
+        background-color: #1e4a8c;
+      }
+
+      td {
+        border-bottom: 1px solid #1e4a8c;
+        color: white;
+      }
+    }
+  }
+}
+
+:deep(.el-input) {
+  .el-input__wrapper {
+    background-color: #071a3b;
+    border: 1px solid #1e4a8c;
+    box-shadow: none;
+
+    &:hover {
+      border-color: #1890ff;
+    }
+
+    &.is-focus {
+      border-color: #1890ff;
+      box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+    }
+
+    .el-input__inner {
+      color: white;
+      background-color: transparent;
+
+      &::placeholder {
+        color: #a0cfff;
+      }
+    }
+  }
+}
+
+:deep(.el-slider) {
+  .el-slider__runway {
+    background-color: #1e4a8c;
+  }
+
+  .el-slider__bar {
+    background-color: #1890ff;
+  }
+
+  .el-slider__button {
+    border-color: #1890ff;
+    background-color: #1890ff;
+  }
+}
+
+// 环境监测模块样式
+.environment-monitoring {
+  margin-top: 30px;
+  .env-device-selector {
+    margin-bottom: 20px;
+    
+    .el-form-item__label {
+      color: white;
+      font-weight: 500;
+    }
+  }
+
+  .env-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    margin-top: 16px;
+
+    .env-metric-card {
+      background: linear-gradient(135deg, #1e4a8c 0%, #071a3b 100%);
+      border: 1px solid #2c5aa0;
+      border-radius: 12px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+      min-height: 120px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+
+      &:hover {
+        border-color: #1890ff;
+        box-shadow: 0 6px 20px rgba(24, 144, 255, 0.25);
+        transform: translateY(-3px);
+      }
+
+      &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #1890ff, #40a9ff);
+        border-radius: 12px 12px 0 0;
+      }
+
+      .metric-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+
+        .metric-title {
+          color: #ffffff;
+          font-size: 16px;
+          font-weight: 600;
+          letter-spacing: 0.5px;
+        }
+
+        .metric-unit {
+          color: #a0cfff;
+          font-size: 12px;
+          font-weight: 500;
+          background: rgba(160, 207, 255, 0.1);
+          padding: 4px 8px;
+          border-radius: 6px;
+          border: 1px solid rgba(160, 207, 255, 0.2);
+        }
+      }
+
+      .metric-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+
+        .metric-value {
+          color: #ffffff;
+          font-size: 32px;
+          font-weight: 700;
+          margin-bottom: 12px;
+          text-shadow: 0 2px 4px rgba(255, 255, 255, 0.3);
+          font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .metric-status {
+          font-size: 13px;
+          font-weight: 500;
+          padding: 6px 12px;
+          border-radius: 16px;
+          display: inline-block;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          min-width: 60px;
+
+          &.normal {
+            background: linear-gradient(135deg, rgba(82, 196, 26, 0.2), rgba(82, 196, 26, 0.1));
+            color: #52c41a;
+            border: 1px solid rgba(82, 196, 26, 0.4);
+            box-shadow: 0 2px 8px rgba(82, 196, 26, 0.2);
+          }
+
+          &.warning {
+            background: linear-gradient(135deg, rgba(250, 173, 20, 0.2), rgba(250, 173, 20, 0.1));
+            color: #faad14;
+            border: 1px solid rgba(250, 173, 20, 0.4);
+            box-shadow: 0 2px 8px rgba(250, 173, 20, 0.2);
+          }
+
+          &.danger {
+            background: linear-gradient(135deg, rgba(255, 77, 79, 0.2), rgba(255, 77, 79, 0.1));
+            color: #ff4d4f;
+            border: 1px solid rgba(255, 77, 79, 0.4);
+            box-shadow: 0 2px 8px rgba(255, 77, 79, 0.2);
+          }
+        }
+      }
+
+      // 加载状态
+      &.loading {
+        .metric-content {
+          opacity: 0.6;
+          
+          .metric-value {
+            color: #666;
+            text-shadow: none;
+          }
+        }
+      }
+    }
+  }
+
+  // 响应式设计
+  @media (max-width: 768px) {
+    .env-metrics-grid {
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+    }
+
+    .env-metric-card {
+      padding: 12px;
+
+      .metric-content .metric-value {
+        font-size: 20px;
+      }
     }
   }
 }

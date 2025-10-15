@@ -60,7 +60,7 @@ import { getDeviceManagementPage } from '@/api/device'; // 导入设备API
 import dynamicWall from '@/utils/electronicFence';
 import blueBG from '@/assets/viewer/billboard/height-bg-blue.png'
 import { loadGLBModels, animateZhamenHeight, handleZhamenClick, handleStationClick, getZhamenAnimationState } from '@/utils/cesium/glbModelLoader';
-
+import signYellow from '@/assets/viewer/billboard/sign-yellow.png'
 // 删除3D Tiles加载器导入
 const store = useStore();
 // const router = useRouter(); // 如果需要路由功能，取消注释
@@ -115,7 +115,7 @@ const currentMapType = ref('cesium');
 
 // 天地图密钥
 const TIANDITU_KEY = "cec5eeadc16a3c964451ff083266df0c";
-
+const stationManageLatlon = ref([118.63880185484506, 27.163336708293347]);
 // 切换地图函数
 const switchMap = (mapType) => {
   if (!viewer || currentMapType.value === mapType) return;
@@ -374,6 +374,53 @@ const loadGLBModelsInViewer = async () => {
     console.error('加载GLB模型失败:', error);
   }
 };
+
+// 创建闸站应急管理中心站billboard
+const createStationManagementCenter = () => {
+  if (!viewer || !stationManageLatlon.value || stationManageLatlon.value.length < 2) {
+    console.error('Viewer未初始化或stationManageLatlon坐标无效');
+    return;
+  }
+
+  const stationId = 'stationManagementCenter';
+  
+  // 如果已存在则不重复创建
+  if (viewer.entities.getById(stationId)) {
+    return;
+  }
+
+  const longitude = stationManageLatlon.value[0];
+  const latitude = stationManageLatlon.value[1];
+
+  viewer.entities.add({
+    id: stationId,
+    position: Cesium.Cartesian3.fromDegrees(longitude, latitude, targetHeight),
+    label: {
+      text: '闸站应急管理中心站',
+      font: '14px Arial',
+      fillColor: Cesium.Color.WHITE,
+           showBackground: true,
+              backgroundColor: Cesium.Color.BLACK.withAlpha(0.7),
+              backgroundPadding: new Cesium.Cartesian2(8, 4),
+      pixelOffset: new Cesium.Cartesian2(0, -40),
+    },
+    billboard: {
+      image: signYellow,
+      width: 30,
+      height: 30,
+      pixelOffset: new Cesium.Cartesian2(0, -20)
+    },
+    customData: {
+      type: 'dam',
+      title: '闸站应急管理中心站',
+      longitude: longitude,
+      latitude: latitude
+    }
+  });
+
+  console.log('闸站应急管理中心站billboard创建完成');
+};
+
 const updateEntities = (panelType) => {
   if (!viewer) return;
 
@@ -390,6 +437,9 @@ const updateEntities = (panelType) => {
     targetEntityIds = damBillboardData.value
       .filter(data => data.type === 'dam')
       .map(data => data.id);
+    
+    // 添加闸站应急管理中心站ID到目标实体列表
+    targetEntityIds.push('stationManagementCenter');
   }
 
   console.log(`更新实体为 ${panelType} 模式，目标实体数量:`, targetEntityIds.length);
@@ -429,14 +479,17 @@ const updateEntities = (panelType) => {
             text: data.title,
             font: '14px Arial',
             fillColor: Cesium.Color.WHITE,
+                  showBackground: true,
+              backgroundColor: Cesium.Color.BLACK.withAlpha(0.7),
+              backgroundPadding: new Cesium.Cartesian2(8, 4),
             pixelOffset: new Cesium.Cartesian2(0, -25),
           },
-          billboard: {
-            image: data.image,
-            scale: 1.0,
-            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-            heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
-          },
+          // billboard: {
+          //   image: data.image,
+          //   scale: 1.0,
+          //   verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          //   heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
+          // },
           customData: data
         });
       }
@@ -465,6 +518,9 @@ const updateEntities = (panelType) => {
         });
       }
     });
+    
+    // 在mainViewer模式下创建闸站应急管理中心站
+    createStationManagementCenter();
   }
 
   // 计算所有实体的包围盒并飞行到该位置

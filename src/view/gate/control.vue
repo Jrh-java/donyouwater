@@ -414,7 +414,7 @@ import { ref, watch, computed, reactive, onMounted, onBeforeUnmount,nextTick } f
 import { Picture, VideoCamera, CaretRight } from '@element-plus/icons-vue';
 import { ElMessage, ElDialog, ElInput, ElButton, ElDivider } from 'element-plus';
 import { useStore } from '@/store/pinia';
-import { gateOnOrOff, getMonitorDevicesByGateStationCodeApi, sendDeviceCommandApi, getDeviceManagementInfo, getGateExtInfo, getGateTaskList, taskSend, setGateOpeningRate, getGateControlCallback } from '@/api/reservoir';
+import { gateOnOrOff, getMonitorDevicesByGateStationCodeApi, sendDeviceCommandApi, getDeviceManagementInfo, getGateExtInfo, getGateTaskList, taskSend, setGateOpeningRate } from '@/api/reservoir';
 import flvjs from 'flv.js';
 
 
@@ -1597,24 +1597,8 @@ const executeGateOpening = async () => {
       const promises = operations.map(async (op) => {
         try {
           await setGateOpeningRate(controlDeviceCode.value, op.devpoint, op.value);
-          
-          // 检查指令发送结果
-          try {
-            // 等待1秒后再获取回调结果
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            const callbackResult = await getGateControlCallback(controlDeviceCode.value, op.devpoint);
-            if (callbackResult === "1") {
-              successCount++;
-              return { success: true, name: op.name };
-            } else {
-              errorMessages.push(`${op.name}控制指令发送失败`);
-              return { success: false, name: op.name };
-            }
-          } catch (callbackError) {
-            console.error(`获取${op.name}指令回调结果失败:`, callbackError);
-            errorMessages.push(`${op.name}指令已发送，但无法确认执行状态`);
-            return { success: false, name: op.name };
-          }
+          successCount++;
+          return { success: true, name: op.name };
         } catch (error) {
           console.error(`${op.name}开度控制失败:`, error);
           errorMessages.push(`${op.name}开度控制失败: ${error.message || '未知错误'}`);
@@ -1659,23 +1643,9 @@ const executeGateOpening = async () => {
       // 调用封装的接口发送控制指令
       await setGateOpeningRate(controlDeviceCode.value, devpoint, gateOpeningForm.openingValue.toString());
 
-      // 检查指令发送结果
-      try {
-         await new Promise(resolve => setTimeout(resolve, 2000));
-        const callbackResult = await getGateControlCallback(controlDeviceCode.value, devpoint);
-        if (callbackResult === "1") {
-          ElMessage.success('闸口开度控制指令发送成功');
-          // 只有成功时才清空输入框
-          gateOpeningForm.openingValue = null;
-        } else {
-          ElMessage.error('闸口开度控制指令发送失败');
-          // 失败时不清空输入框，让用户可以重试
-        }
-      } catch (callbackError) {
-        console.error('获取指令回调结果失败:', callbackError);
-        ElMessage.warning('指令已发送，但无法确认执行状态');
-        // 无法确认状态时不清空输入框
-      }
+      ElMessage.success('闸口开度控制指令发送成功');
+      // 清空输入框
+      gateOpeningForm.openingValue = null;
     }
 
   } catch (error) {
@@ -2061,7 +2031,7 @@ onBeforeUnmount(async () => {
   background-color: #000;
   border-radius: 4px;
   overflow: hidden;
-  min-height: 450px;
+  min-height: 450px; 
   .video-header {
     position: absolute;
     top: 0;

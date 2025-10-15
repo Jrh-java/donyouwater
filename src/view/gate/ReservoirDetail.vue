@@ -532,6 +532,7 @@ const fetchDeviceList = async () => {
 // 获取渗压数据
 const fetchOsmoticPressureData = async (gateStationCode: string) => {
   try {
+       const gateStationCode = 'FJ.JODY.FH01.Z01.STATION' //临时替换固定值
     const data = await getOsmoticPressureWeekMaxApi(gateStationCode)
     updateSeepagePressureChart(data)
   } catch (error) {
