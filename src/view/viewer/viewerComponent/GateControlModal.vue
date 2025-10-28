@@ -443,6 +443,7 @@ import DisplacementTable from '@/components/DisplacementTable.vue';
 import flvjs from 'flv.js';
 import * as echarts from 'echarts';
 import { useRouter } from 'vue-router';
+import { buildFlvUrl } from '@/utils/config';
 
 const router = useRouter();
 
@@ -1314,7 +1315,7 @@ const sendControlCommandForDevice = async (deviceCode, playerIndex) => {
 
     if (result === "发送取流命令成功！") {
       // 构建FLV视频流地址
-      const flvUrl = `http://220.250.41.136:8866/live?url=rtmp://119.3.245.90/live/${deviceCode}`;
+      const flvUrl = await buildFlvUrl(deviceCode);
       console.log('准备播放FLV流:', flvUrl);
 
       // 更新播放器信息
@@ -1514,7 +1515,7 @@ const sendControlCommand = async (deviceCode) => {
     if (result === "发送取流命令成功！") {
       ElMessage.success('发送取流命令成功！');
       // 构建FLV视频流地址
-      const flvUrl = `http://220.250.41.136:8866/live?url=rtmp://119.3.245.90/live/${deviceCode}`;
+      const flvUrl = await buildFlvUrl(deviceCode);
 
       console.log('准备播放FLV流:', flvUrl);
       videoUrl.value = flvUrl;

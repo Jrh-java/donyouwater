@@ -86,8 +86,9 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { ElMessage } from 'element-plus';
-import flvjs from 'flv.js';
+import { createWebSocketPlayer, WebSocketPlayer } from '@/utils/websocketPlayer';
 import { sendDeviceCommandApi } from '@/api/reservoir';
+import { buildWebSocketUrl } from '@/utils/config';
 
 interface DeviceInfo {
   name: string;
@@ -122,7 +123,7 @@ const emit = defineEmits<{
 
 const currentTab = ref('realtimeVideo'); // 默认显示实时视频
 const videoElement = ref<HTMLVideoElement | null>(null);
-const flvPlayer = ref<any>(null);
+const wsPlayer = ref<WebSocketPlayer | null>(null);
 const videoUrl = ref('');
 const connectionStatus = ref('');
 const connectTime = ref('');
@@ -171,15 +172,8 @@ const closePanel = async () => {
   emit('close');
 };
 
-// 初始化FLV播放器
-const initFLVPlayer = (url: string) => {
-  console.log('初始化FLV播放器:', url);
-  
-  if (!videoElement.value) {
-    console.error('视频元素未找到');
-    return;
-  }
-  
+// 初始化视频播放
+const initVideo = async (url: string) => {
   if (!url) {
     console.error('视频URL为空');
     ElMessage.error('视频URL无效');
@@ -190,91 +184,66 @@ const initFLVPlayer = (url: string) => {
   cleanup();
   
   try {
-    if (flvjs.isSupported()) {
-      flvPlayer.value = flvjs.createPlayer({
-        type: 'flv',
-        url: url,
-        isLive: true,
-        hasAudio: true,
-        hasVideo: true,
-        enableStashBuffer: false,
-        stashInitialSize: undefined,
-        lazyLoad: true,
-        lazyLoadMaxDuration: 3 * 60,
-        lazyLoadRecoverDuration: 30
-      });
-      
-      flvPlayer.value.attachMediaElement(videoElement.value);
-      
-      // 监听播放器事件
-      flvPlayer.value.on(flvjs.Events.LOADING_COMPLETE, () => {
-        console.log('FLV加载完成');
-        connectionStatus.value = '已连接';
-      });
-      
-      flvPlayer.value.on(flvjs.Events.MEDIA_INFO, (mediaInfo: any) => {
-        console.log('媒体信息:', mediaInfo);
-      });
-      
-      flvPlayer.value.on(flvjs.Events.ERROR, (errorType: string, errorDetail: string, errorInfo: any) => {
-        console.error('FLV播放错误:', errorType, errorDetail, errorInfo);
-        connectionStatus.value = '连接失败';
-        
-        let errorMessage = '视频播放失败';
-        if (errorType === 'MediaError') {
-          if (errorDetail === 'FormatUnsupported') {
-            errorMessage = '视频格式不支持，请检查视频流地址';
-          } else if (errorDetail === 'NetworkError') {
-            errorMessage = '网络连接失败，请检查网络状态';
-          }
-        }
-        
-        ElMessage.error(errorMessage);
-        
-        // 清理播放器
-        cleanup();
-      });
-      
-      flvPlayer.value.load();
-      
-      // 等待一段时间后开始播放
-      setTimeout(() => {
-        if (flvPlayer.value) {
-          flvPlayer.value.play();
-          isPlaying.value = true;
-          connectTime.value = new Date().toLocaleTimeString();
-        }
-      }, 1000);
-      
-      videoUrl.value = url;
-      
-    } else {
-      console.error('浏览器不支持FLV播放');
-      ElMessage.error('浏览器不支持FLV播放');
+    if (!videoElement.value) {
+      console.error('视频元素未找到');
+      ElMessage.error('视频元素初始化失败');
+      return;
     }
+
+    // 创建WebSocket播放器
+    wsPlayer.value = createWebSocketPlayer({
+      url: url,
+      videoElement: videoElement.value,
+      onConnected: () => {
+        console.log('WebSocket连接已建立');
+        connectionStatus.value = '已连接';
+        connectTime.value = new Date().toLocaleTimeString();
+        
+        // 开始播放
+        setTimeout(() => {
+          if (wsPlayer.value) {
+            wsPlayer.value.play();
+            isPlaying.value = true;
+          }
+        }, 1000);
+      },
+      onError: (error: string) => {
+        console.error('WebSocket播放错误:', error);
+        connectionStatus.value = '连接失败';
+        ElMessage.error(`视频播放失败: ${error}`);
+        cleanup();
+      },
+      onDisconnected: () => {
+        console.log('WebSocket连接已断开');
+        connectionStatus.value = '连接断开';
+        isPlaying.value = false;
+      }
+    });
+
+    // 连接WebSocket
+    await wsPlayer.value.connect();
+    videoUrl.value = url;
+      
   } catch (error) {
-    console.error('FLV播放器初始化失败:', error);
+    console.error('WebSocket播放器初始化失败:', error);
     ElMessage.error('视频播放器初始化失败');
   }
 };
 
 // 清理播放器资源
 const cleanup = () => {
-  if (flvPlayer.value) {
+  if (wsPlayer.value) {
     try {
-      flvPlayer.value.pause();
-      flvPlayer.value.unload();
-      flvPlayer.value.detachMediaElement();
-      flvPlayer.value.destroy();
+      wsPlayer.value.disconnect();
     } catch (error) {
       console.error('清理播放器失败:', error);
     }
-    flvPlayer.value = null;
+    wsPlayer.value = null;
   }
   
   videoUrl.value = '';
   isPlaying.value = false;
-
+  connectionStatus.value = '';
   connectTime.value = '';
 };
 
@@ -305,15 +274,15 @@ const playVideo = async (deviceCode: string) => {
     
     if (result.data === "发送取流命令成功！" || result === "发送取流命令成功！") {
       ElMessage.success('发送取流命令成功！');
-      // 构建FLV视频流地址
-      const flvUrl = `http://220.250.41.136:8866/live?url=rtmp://119.3.245.90/live/${deviceCode}`;
+      // 构建WebSocket视频流地址
+      const wsUrl = await buildWebSocketUrl(deviceCode);
       
-      console.log('准备播放FLV流:', flvUrl);
-      videoUrl.value = flvUrl;
+      console.log('准备播放WebSocket流:', wsUrl);
+      videoUrl.value = wsUrl;
       
       // 等待设备准备好后开始播放视频
       setTimeout(() => {
-        initFLVPlayer(flvUrl);
+        initVideo(wsUrl);
       }, 2000);
     } else {
       ElMessage.error('发送控制命令失败');

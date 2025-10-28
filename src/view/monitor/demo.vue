@@ -52,7 +52,7 @@ export default {
   data() {
     return {
       flvPlayer: null,
-      videoUrl: 'http://220.250.41.136:8866/live?url=rtmp://119.3.245.90/live/YN16320506000001',
+      videoUrl: 'http://192.168.1.160:8866/live?url=rtmp://119.3.245.90/live/YN16320506000001',
       authToken: 'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsInVzZXJJZCI6IjEyMSIsIm5hbWUiOiLmgLvoo4EiLCJvcmdJZCI6Ii0xIiwiZXhwIjoxNzk0ODE2MDk4fQ.BosQRpQahIzcKby9-TI7mmlaa-PzVi5x2y7gyTejVmLWCxYGIR_vIINEOqvyyi0LKj_kt-IVkq0aQh2wNgQd88OZSy07lMSnJsQB9N8W9NL83HHg9u1t_ozTa-23TEVUfGnTx_ZnSEdGpLUg8PUvA3zrCGNNvF07vhdaB4CR4nM',
       connectionStatus: '未连接',
       isPlaying: false,

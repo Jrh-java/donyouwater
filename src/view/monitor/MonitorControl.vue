@@ -264,6 +264,7 @@ import { getMonitorDevicesByGateStationCodeApi, sendDeviceCommandApi, sendBackCo
 import { getDeviceManagementPage } from '@/api/device';
 import { ElMessage } from 'element-plus';
 import flvjs from 'flv.js';
+import { buildFlvUrl } from '@/utils/config';
 
 const searchKeyword = ref('');
 const activeTab = ref('realtime');
@@ -443,9 +444,8 @@ const sendControlCommand = async (deviceCode) => {
     if (result === "发送取流命令成功！") {
       ElMessage.success('发送取流命令成功！');
       // 构建FLV视频流地址
-      const originalUrl = `http://220.250.41.136:8866/live?url=rtmp://119.3.245.90/live/${deviceCode}`;
-      const flvUrl = convertUrlProtocol(originalUrl);
-      // const flvUrl = `http://220.250.41.136:8866/live?url=rtmp://119.3.245.90/live/YN16320506000713`;
+      const flvUrl = await buildFlvUrl(deviceCode);
+      // const flvUrl = `http://192.168.1.160:8866/live?url=rtmp://119.3.245.90/live/YN16320506000713`;
       
       // 测试用的公开FLV流地址（如果上面的地址不可用）
       // const testFlvUrl = 'https://sf1-hscdn-tos.pstatp.com/obj/media-fe/xgplayer_doc_video/flv/xgplayer-demo-360p.flv';
@@ -1024,8 +1024,7 @@ const sendBatchControlCommands = async () => {
         successCount++;
         
         // 构建FLV视频流地址
-        const originalUrl = `http://220.250.41.136:8866/live?url=rtmp://119.3.245.90/live/${device.deviceCode}`;
-        const flvUrl = convertUrlProtocol(originalUrl);
+        const flvUrl = await buildFlvUrl(device.deviceCode);
         console.log(`准备播放设备${currentIndex}的FLV流:`, flvUrl);
         
         // 保存当前索引，避免异步调用时索引值变化
@@ -1340,8 +1339,7 @@ const sendBatchControlCommandsForBatch = async (devices) => {
         await sendControlCommand(device.deviceCode);
         
         // 构建FLV视频流地址
-        const originalUrl = `http://220.250.41.136:8866/live?url=rtmp://119.3.245.90/live/${device.deviceCode}`;
-        const flvUrl = convertUrlProtocol(originalUrl);
+        const flvUrl = await buildFlvUrl(device.deviceCode);
         console.log(`设备${deviceIndex} FLV地址:`, flvUrl);
         
         // 初始化FLV播放器
