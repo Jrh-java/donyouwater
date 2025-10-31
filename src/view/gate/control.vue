@@ -162,24 +162,30 @@
         <div class="gate-external-monitor">
           <!-- 多视频播放区域 -->
           <div class="multi-video-display-area">
-            <div v-if="videoPlayers.length === 0" class="video-placeholder">
-              <div style="text-align: center; color: #999;">
-                <div style="font-size: 48px; margin-bottom: 10px;">📹</div>
-                <div style="font-size: 16px;">暂无视频播放</div>
-              </div>
-            </div>
-            <div v-else class="video-grid" :class="getVideoGridClass()">
-              <div v-for="(player, index) in videoPlayers" :key="player.deviceCode" class="video-container">
+            <div class="video-grid video-grid-4">
+              <div v-for="(videoUrl, index) in ys7VideoUrls" :key="`video-${index}`" class="video-container">
                 <div class="video-header">
-                  <span class="video-title">{{ player.deviceName }}</span>
-                  <!-- <el-button type="danger" size="small" @click="removeVideoPlayer(index)">关闭</el-button> -->
+                  <span class="video-title">通道 {{ index + 1 }}</span>
+                  <div class="video-status">
+                    <span v-if="videoLoadingStates[index]" class="loading-text">加载中...</span>
+                    <span v-else-if="videoUrl" class="connected-text">已连接</span>
+                    <span v-else class="disconnected-text">未连接</span>
+                  </div>
                 </div>
-                <video :ref="el => setVideoRef(el, index)" class="video-player" controls muted autoplay
-                  style="width: 100%; height: 100%; background-color: #000;">
-                  您的浏览器不支持视频播放
-                </video>
-                <div class="video-status-overlay">
-                  <span v-if="player.connectTime">连接时间: {{ player.connectTime }}</span>
+                <div class="video-wrapper">
+                  <div 
+                    v-if="videoUrl" 
+                    :id="`video-container-${index}`"
+                    class="video-player" 
+                    style="width: 100%; height: 100%; background-color: #000;"
+                  >
+                  </div>
+                  <div v-else class="video-placeholder">
+                    <div style="text-align: center; color: #999;">
+                      <div style="font-size: 32px; margin-bottom: 8px;">📹</div>
+                      <div style="font-size: 14px;">暂无视频</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -417,6 +423,10 @@ import { useStore } from '@/store/pinia';
 import { gateOnOrOff, getMonitorDevicesByGateStationCodeApi, sendDeviceCommandApi, getDeviceManagementInfo, getGateExtInfo, getGateTaskList, taskSend, setGateOpeningRate } from '@/api/reservoir';
 import flvjs from 'flv.js';
 import { buildFlvUrl } from '@/utils/config';
+import { generateLiveUrl } from '@/utils/generateLiveUrl';
+import { getYs7TokenApi, getYs7LiveAddressApi, getYs7DeviceInfoApi, getYs7DeviceListApi } from '@/api/ys7';
+// 引入 EZUIKit 播放器
+import EZUIKit from "ezuikit-js";
 
 
 const store = useStore();
@@ -447,20 +457,6 @@ const gatePortOptions = ref([
 // 设备编码（用于控制操作）
 const controlDeviceCode = ref('');
 
-// 视频播放相关
-const cameraDevices = ref([]);
-const selectedCameraDevice = ref('');
-const videoElement = ref(null);
-const flvPlayer = ref(null);
-const videoUrl = ref('');
-const connectionStatus = ref('未连接');
-const connectTime = ref('');
-const isPlaying = ref(false);
-
-// 多视频播放相关
-const videoPlayers = ref([]);
-const videoRefs = ref([]);
-
 // 任务计划相关
 const taskList = ref([]);
 const taskLoading = ref(false);
@@ -485,6 +481,57 @@ const gateOpeningForm = reactive({
   gate2OpeningValue: null
 });
 const gateOpeningLoading = ref(false);
+
+// 闸站代码到闸站名称的映射
+const CODE_TO_NAME_MAPPING = {
+  'FJ.JODY.FH01.Z05.STATION': '松溪左岸1号闸站',
+  'FJ.JODY.FH01.Z04.STATION': '松溪左岸2号闸站',
+  'FJ.JODY.FH01.Z03.STATION': '松溪左岸3号闸站',
+  'FJ.JODY.FH01.Z02.STATION': '松溪右岸1号闸站',
+  'FJ.JODY.FH01.Z01.STATION': '松溪右岸2号闸站'
+};
+
+// 闸站名称到设备序列号的映射
+const GATE_STATION_MAPPING = {
+  '松溪左岸1号闸站': 'FT8680159',
+  '松溪左岸2号闸站': 'FT4489510', 
+  '松溪左岸3号闸站': 'FT8680213',
+  '松溪右岸1号闸站': 'FT4489479',
+  '松溪右岸2号闸站': 'FT4489367'
+};
+
+// 萤石云视频相关
+const ys7AccessToken = ref('');
+const ys7TokenExpireTime = ref(0);
+const videoLoadingStates = ref([false, false, false, false]); // 四个通道的加载状态
+const ys7VideoUrls = ref(['', '', '', '']); // 四个通道的视频URL
+const ys7VideoPlayers = ref([null, null, null, null]); // 四个通道的 EZUIKit 播放器实例
+
+// 网络异常自动重连相关状态
+const reconnectStates = ref([
+  { isReconnecting: false, retryCount: 0, maxRetries: 5, retryInterval: 5000 },
+  { isReconnecting: false, retryCount: 0, maxRetries: 5, retryInterval: 5000 },
+  { isReconnecting: false, retryCount: 0, maxRetries: 5, retryInterval: 5000 },
+  { isReconnecting: false, retryCount: 0, maxRetries: 5, retryInterval: 5000 }
+]); // 四个通道的重连状态
+const reconnectTimers = ref([null, null, null, null]); // 重连定时器
+
+// 获取闸站对应的设备序列号（支持闸站名称或闸站代码）
+const getDeviceSerialByStationName = (stationNameOrCode) => {
+  // 如果直接是闸站名称，直接查找
+  if (GATE_STATION_MAPPING[stationNameOrCode]) {
+    return GATE_STATION_MAPPING[stationNameOrCode];
+  }
+  
+  // 如果是闸站代码，先转换为闸站名称，再查找设备序列号
+  const stationName = CODE_TO_NAME_MAPPING[stationNameOrCode];
+  if (stationName && GATE_STATION_MAPPING[stationName]) {
+    return GATE_STATION_MAPPING[stationName];
+  }
+  
+  console.warn(`未找到闸站 ${stationNameOrCode} 对应的设备序列号`);
+  return null;
+};
 
 // 计算属性：获取当前选中的节点
 const selectedDamNode = computed(() => store.selectedDamNode);
@@ -722,470 +769,511 @@ const isStopButtonDisabled = computed(() => {
   }
 });
 
-// handleGateChange函数已删除，不再需要闸门选择功能
+// 旧的视频获取逻辑已删除，将使用新的 Yingshiyun 视频流
 
-// 获取摄像设备列表
-const fetchCameraDevices = async (gateStationCode) => {
+// 新的 Yingshiyun 视频相关函数将在这里添加
+
+// 获取萤石云访问令牌
+const getYs7AccessToken = async () => {
   try {
-    const devices = await getMonitorDevicesByGateStationCodeApi(gateStationCode);
-    cameraDevices.value = devices || [];
-    selectedCameraDevice.value = '';
-    cleanup();
-    console.log('获取到摄像设备:', devices);
-  } catch (error) {
-    console.error('获取摄像设备失败:', error);
-    ElMessage.error('获取摄像设备失败');
-    cameraDevices.value = [];
-  }
-};
+    // 检查令牌是否还有效（提前5分钟刷新）
+    const now = Date.now();
+    if (ys7AccessToken.value && ys7TokenExpireTime.value > now + 5 * 60 * 1000) {
+      return ys7AccessToken.value;
+    }
 
-// 处理多个摄像设备变化（新增函数）
-const handleMultipleCameraDeviceChange = async (devices) => {
-  if (!devices || devices.length === 0) {
-    console.log('没有摄像设备');
-    return;
-  }
-
-  // 清空现有的视频播放器
-  cleanup();
-  videoPlayers.value = [];
-  videoRefs.value = [];
-
-  console.log('开始播放多个摄像设备视频:', devices);
-
-  // 为每个设备创建视频播放器
-  for (let i = 0; i < devices.length; i++) {
-    const device = devices[i];
-    const player = {
-      deviceCode: device.deviceCode,
-      deviceName: device.deviceName,
-      flvPlayer: null,
-      connectTime: '',
-      videoUrl: ''
-    };
+    console.log('获取萤石云访问令牌...');
+    const tokenData = await getYs7TokenApi();
     
-    videoPlayers.value.push(player);
-    
-    // 等待DOM更新后初始化播放器
-    await nextTick();
-    
-    // 发送控制命令并初始化播放器
-    await sendControlCommandForDevice(device.deviceCode, i);
-  }
-};
-
-// 为特定设备发送控制命令（新增函数）
-const sendControlCommandForDevice = async (deviceCode, playerIndex) => {
-  try {
-    const topic = `YN/0000/769834/control/${deviceCode}`;
-    const payloadStr = JSON.stringify({
-      "command": "config",
-      "rtmpCtrl": {
-        "rtmpEnable": 1,
-        "rtmpServer": "119.3.245.90",
-        "rtmpPort": 1935,
-        "releaseTime": 5
-      }
-    });
-
-    console.log(`发送摄像设备 ${deviceCode} 控制命令`);
-    const result = await sendDeviceCommandApi(topic, payloadStr);
-    console.log('发送控制命令结果:', result);
-
-    if (result === "发送取流命令成功！") {
-      // 构建FLV视频流地址
-      const flvUrl = await buildFlvUrl(deviceCode);
-      console.log('准备播放FLV流:', flvUrl);
-
-      // 更新播放器信息
-      if (videoPlayers.value[playerIndex]) {
-        videoPlayers.value[playerIndex].videoUrl = flvUrl;
-        videoPlayers.value[playerIndex].connectTime = new Date().toLocaleTimeString();
-      }
-
-      // 等待2秒让设备准备好，然后初始化播放器
-      setTimeout(() => {
-        initFLVPlayerForDevice(flvUrl, playerIndex);
-      }, 2000);
+    if (tokenData && tokenData.accessToken) {
+      ys7AccessToken.value = tokenData.accessToken;
+      // 设置过期时间（通常为7天，这里设置为6天23小时以确保提前刷新）
+      ys7TokenExpireTime.value = now + (tokenData.expireTime || 7 * 24 * 60 * 60 * 1000) - 60 * 60 * 1000;
+      console.log('萤石云令牌获取成功:', tokenData.accessToken);
+      return tokenData.accessToken;
     } else {
-      ElMessage.error(`摄像设备 ${deviceCode} 控制失败`);
+      throw new Error('获取令牌失败：响应数据无效');
     }
   } catch (error) {
-    console.error(`发送控制命令失败:`, error);
-    ElMessage.error(`摄像设备 ${deviceCode} 控制失败`);
+    console.error('获取萤石云访问令牌失败:', error);
+    ElMessage.error('获取萤石云访问令牌失败');
+    return null;
   }
 };
 
-// 为特定设备初始化FLV播放器（新增函数）
-const initFLVPlayerForDevice = async (videoUrl, playerIndex) => {
+// 检查设备状态和权限
+const checkDeviceStatusAndPermissions = async (accessToken, deviceSerial) => {
   try {
-    // 等待video元素准备就绪
-    await nextTick();
+    console.log('检查设备信息:', deviceSerial);
     
-    const videoElement = videoRefs.value[playerIndex];
-    if (!videoElement) {
-      console.error(`视频元素未找到，索引: ${playerIndex}`);
-      return;
-    }
-
-    if (!videoUrl) {
-      console.error('视频URL为空');
-      return;
-    }
-
-    console.log(`初始化FLV播放器 ${playerIndex}:`, videoUrl);
-
-    if (flvjs.isSupported()) {
-      // 如果已有播放器，先销毁
-      if (videoPlayers.value[playerIndex] && videoPlayers.value[playerIndex].flvPlayer) {
-        const existingPlayer = videoPlayers.value[playerIndex].flvPlayer;
-        try {
-          if (!existingPlayer.destroyed) {
-            existingPlayer.pause();
-            existingPlayer.unload();
-            existingPlayer.detachMediaElement();
-            existingPlayer.destroy();
-          }
-        } catch (e) {
-          console.warn(`销毁已有播放器 ${playerIndex} 时出错:`, e);
-        }
-        videoPlayers.value[playerIndex].flvPlayer = null;
-      }
-
-      const player = flvjs.createPlayer({
-        type: 'flv',
-        url: videoUrl,
-        isLive: true,
-        hasAudio: false,
-        hasVideo: true,
-        enableWorker: false,
-        enableStashBuffer: false,
-        stashInitialSize: 128,
-        autoCleanupSourceBuffer: true
-      });
-
-      // 绑定到video元素
-      player.attachMediaElement(videoElement);
-
-      // 事件监听
-      player.on(flvjs.Events.LOADING_COMPLETE, () => {
-        console.log(`播放器 ${playerIndex} 加载完成`);
-      });
-
-      player.on(flvjs.Events.MEDIA_INFO, (mediaInfo) => {
-        console.log(`播放器 ${playerIndex} 媒体信息:`, mediaInfo);
-      });
-
-      player.on(flvjs.Events.ERROR, (errorType, errorDetail, errorInfo) => {
-        console.error(`播放器 ${playerIndex} 错误:`, errorType, errorDetail, errorInfo);
-        
-        let errorMessage = '视频播放失败';
-        let shouldReconnect = false;
-
-        if (errorType === 'MediaError') {
-          if (errorDetail === 'FormatUnsupported') {
-            errorMessage = `播放器 ${playerIndex} 视频格式不支持，请检查视频流地址`;
-          } else if (errorDetail === 'NetworkError') {
-            errorMessage = `播放器 ${playerIndex} 网络连接失败，正在尝试重连...`;
-            shouldReconnect = true;
-          }
-        } else if (errorType === 'NetworkError') {
-          // 检测到网络错误，可能是自动断流
-          errorMessage = `播放器 ${playerIndex} 视频流已断开，正在尝试重连...`;
-          shouldReconnect = true;
-        }
-
-        if (shouldReconnect && videoPlayers.value[playerIndex]) {
-          const deviceCode = videoPlayers.value[playerIndex].deviceCode;
-          console.log(`检测到播放器 ${playerIndex} 自动断流，尝试重连设备: ${deviceCode}`);
-          ElMessage.warning(`播放器 ${playerIndex} 视频流已断开，正在尝试重连...`);
-
-          // 清理当前播放器
-          if (player && !player.destroyed) {
-            try {
-              player.pause();
-              player.unload();
-              player.detachMediaElement();
-              player.destroy();
-            } catch (e) {
-              console.error(`清理播放器 ${playerIndex} 失败:`, e);
-            }
-          }
-
-          // 延迟2秒后重新发送控制命令
-          setTimeout(() => {
-            if (videoPlayers.value[playerIndex] && deviceCode) {
-              console.log(`重新发送控制命令给设备: ${deviceCode}`);
-              sendControlCommandForDevice(deviceCode, playerIndex);
-            }
-          }, 2000);
-        } else {
-          ElMessage.error(errorMessage);
-          // 移除失败的播放器
-          if (videoPlayers.value[playerIndex]) {
-            removeVideoPlayer(playerIndex);
-          }
-        }
-      });
-
-      // 加载并播放
-      player.load();
+    // 1. 检查设备信息和在线状态
+    try {
+      const deviceInfoRes = await getYs7DeviceInfoApi(accessToken, deviceSerial);
+      console.log('设备信息查询结果:', deviceInfoRes);
       
-      // 存储播放器实例
-      if (videoPlayers.value[playerIndex]) {
-        videoPlayers.value[playerIndex].flvPlayer = player;
-      }
-
-      // 尝试播放
-      try {
-        await videoElement.play();
-        console.log(`播放器 ${playerIndex} 开始播放`);
-      } catch (playError) {
-        console.warn(`播放器 ${playerIndex} 自动播放失败:`, playError);
-      }
-
-    } else {
-      console.error('浏览器不支持FLV播放');
-      ElMessage.error('浏览器不支持FLV播放');
-    }
-
-  } catch (error) {
-    console.error(`初始化播放器 ${playerIndex} 失败:`, error);
-  }
-};
-
-// 设置视频元素引用（新增函数）
-const setVideoRef = (el, index) => {
-  if (el) {
-    videoRefs.value[index] = el;
-  }
-};
-
-// 移除视频播放器（新增函数）
-const removeVideoPlayer = (index) => {
-  if (videoPlayers.value[index] && videoPlayers.value[index].flvPlayer) {
-    const player = videoPlayers.value[index].flvPlayer;
-    try {
-      if (!player.destroyed) {
-        player.pause();
-        player.unload();
-        player.detachMediaElement();
-        player.destroy();
-      }
-    } catch (e) {
-      console.warn(`移除播放器 ${index} 时出错:`, e);
-    }
-  }
-  videoPlayers.value.splice(index, 1);
-  videoRefs.value.splice(index, 1);
-};
-
-// 获取视频网格样式类（新增函数）
-const getVideoGridClass = () => {
-  const count = videoPlayers.value.length;
-  if (count === 1) return 'single-video';
-  if (count === 2) return 'dual-video';
-  if (count <= 4) return 'quad-video';
-  return 'multi-video';
-};
-
-// 处理摄像设备选择变化（保留原函数但标记为废弃）
-const handleCameraDeviceChange = (deviceCode) => {
-  console.warn('handleCameraDeviceChange 函数已废弃，请使用 handleMultipleCameraDeviceChange');
-  // 为了兼容性，暂时保留但不执行任何操作
-};
-
-// 发送设备控制命令
-const sendControlCommand = async (deviceCode) => {
-  try {
-    const topic = `YN/0000/769834/control/${deviceCode}`;
-    const payloadStr = JSON.stringify({
-      "command": "config",
-      "rtmpCtrl": {
-        "rtmpEnable": 1,
-        "rtmpServer": "119.3.245.90",
-        "rtmpPort": 1935,
-        "releaseTime": 5
-      }
-    });
-
-    const result = await sendDeviceCommandApi(topic, payloadStr);
-    console.log('发送控制命令结果:', result);
-
-    if (result === "发送取流命令成功！") {
-      ElMessage.success('发送取流命令成功！');
-      // 构建FLV视频流地址
-      const flvUrl = await buildFlvUrl(deviceCode);
-
-      console.log('准备播放FLV流:', flvUrl);
-      videoUrl.value = flvUrl;
-      connectionStatus.value = '连接中...';
-
-      // 开始播放视频
-      setTimeout(() => {
-        initFLVPlayer(flvUrl);
-      }, 2000); // 等待2秒让设备准备好
-    } else {
-      ElMessage.error('发送控制命令失败');
-    }
-  } catch (error) {
-    console.error('发送控制命令失败:', error);
-    ElMessage.error('发送控制命令失败');
-  }
-};
-
-// 初始化FLV播放器
-const initFLVPlayer = (url) => {
-  console.log('初始化FLV播放器:', url);
-
-  if (!videoElement.value) {
-    console.error('视频元素未找到');
-    return;
-  }
-
-  if (!url) {
-    console.error('视频URL为空');
-    ElMessage.error('视频URL无效');
-    return;
-  }
-
-  // 清理现有播放器
-  cleanup();
-
-  try {
-    if (flvjs.isSupported()) {
-      flvPlayer.value = flvjs.createPlayer({
-        type: 'flv',
-        url: url,
-        isLive: true,
-        hasAudio: true,
-        hasVideo: true,
-        enableWorker: false,
-        enableStashBuffer: false,
-        stashInitialSize: undefined,
-        lazyLoad: true,
-        lazyLoadMaxDuration: 3 * 60,
-        lazyLoadRecoverDuration: 30
-      });
-
-      flvPlayer.value.attachMediaElement(videoElement.value);
-
-      // 监听播放器事件
-      flvPlayer.value.on(flvjs.Events.LOADING_COMPLETE, () => {
-        console.log('FLV加载完成');
-        connectionStatus.value = '已连接';
-      });
-
-      flvPlayer.value.on(flvjs.Events.MEDIA_INFO, (mediaInfo) => {
-        console.log('媒体信息:', mediaInfo);
-      });
-
-      flvPlayer.value.on(flvjs.Events.ERROR, (errorType, errorDetail, errorInfo) => {
-        console.error('FLV播放错误:', errorType, errorDetail, errorInfo);
-        connectionStatus.value = '连接失败';
-
-        let errorMessage = '视频播放失败';
-        let shouldReconnect = false;
-
-        if (errorType === 'MediaError') {
-          if (errorDetail === 'FormatUnsupported') {
-            errorMessage = '视频格式不支持，请检查视频流地址';
-          } else if (errorDetail === 'NetworkError') {
-            errorMessage = '网络连接失败，正在尝试重连...';
-            shouldReconnect = true;
-          }
-        } else if (errorType === 'NetworkError') {
-          // 检测到网络错误，可能是自动断流
-          errorMessage = '视频流已断开，正在尝试重连...';
-          shouldReconnect = true;
-        }
-
-        if (shouldReconnect && selectedCameraDevice.value) {
-          console.log('检测到自动断流，尝试重连...');
-          ElMessage.warning('视频流已断开，正在尝试重连...');
-
-          // 清理当前播放器
-          cleanup();
-
-          // 延迟2秒后重新连接
-          setTimeout(() => {
-            if (selectedCameraDevice.value) {
-              console.log('重新发送控制命令:', selectedCameraDevice.value);
-              sendControlCommand(selectedCameraDevice.value);
-            }
-          }, 2000);
+      if (deviceInfoRes.code === '200') {
+        const deviceInfo = deviceInfoRes.data;
+        console.log('设备详细信息:', deviceInfo);
+        console.log('设备在线状态:', deviceInfo.status === 1 ? '在线' : '离线');
+        
+        if (deviceInfo.status === 0) {
+          ElMessage.warning(`设备 ${deviceSerial} 当前离线，可能无法获取视频流`);
         } else {
-          ElMessage.error(errorMessage);
-          // 清理播放器
-          cleanup();
+          console.log('✓ 设备在线，状态正常');
         }
-      });
-
-      flvPlayer.value.load();
-
-      // 等待一段时间后开始播放
-      setTimeout(() => {
-        if (flvPlayer.value) {
-          flvPlayer.value.play();
-          isPlaying.value = true;
-          connectTime.value = new Date().toLocaleTimeString();
-        }
-      }, 1000);
-
-      videoUrl.value = url;
-
-    } else {
-      console.error('浏览器不支持FLV播放');
-      ElMessage.error('浏览器不支持FLV播放');
-    }
-  } catch (error) {
-    console.error('FLV播放器初始化失败:', error);
-    ElMessage.error('视频播放器初始化失败');
-  }
-};
-
-// 清理播放器资源
-const cleanup = () => {
-  // 清理原有的单个播放器
-  if (flvPlayer.value) {
-    try {
-      flvPlayer.value.pause();
-      flvPlayer.value.unload();
-      flvPlayer.value.detachMediaElement();
-      flvPlayer.value.destroy();
-    } catch (error) {
-      console.error('清理播放器失败:', error);
-    }
-    flvPlayer.value = null;
-  }
-
-  // 清理多个播放器
-  if (videoPlayers.value && videoPlayers.value.length > 0) {
-    videoPlayers.value.forEach((player, index) => {
-      if (player.flvPlayer) {
-        try {
-          if (!player.flvPlayer.destroyed) {
-            player.flvPlayer.pause();
-            player.flvPlayer.unload();
-            player.flvPlayer.detachMediaElement();
-            player.flvPlayer.destroy();
-          }
-        } catch (error) {
-          console.error(`清理播放器 ${index} 失败:`, error);
+      } else {
+        console.error('设备信息查询失败:', deviceInfoRes.msg);
+        if (deviceInfoRes.code === '20002') {
+          ElMessage.error(`设备 ${deviceSerial} 不存在或无访问权限`);
         }
       }
-    });
-    videoPlayers.value = [];
-    videoRefs.value = [];
-  }
+    } catch (error) {
+      console.error('设备信息查询异常:', error);
+    }
 
-  videoUrl.value = '';
-  isPlaying.value = false;
-  connectionStatus.value = '未连接';
-  connectTime.value = '';
+    // 2. 检查设备列表中是否包含该设备（验证权限）
+    try {
+      const deviceListRes = await getYs7DeviceListApi(accessToken);
+      console.log('设备列表查询结果:', deviceListRes);
+      
+      if (deviceListRes.code === '200') {
+        const devices = deviceListRes.data;
+        const targetDevice = devices.find(device => device.deviceSerial === deviceSerial);
+        
+        if (targetDevice) {
+          console.log('✓ 在设备列表中找到目标设备:', targetDevice);
+          console.log('设备权限验证通过');
+        } else {
+          console.warn('⚠ 在设备列表中未找到目标设备，可能无访问权限');
+          ElMessage.warning(`账号可能没有设备 ${deviceSerial} 的访问权限`);
+        }
+        
+        console.log('账号下所有设备:', devices.map(d => ({
+          serial: d.deviceSerial,
+          name: d.deviceName,
+          status: d.status === 1 ? '在线' : '离线'
+        })));
+      } else {
+        console.error('设备列表查询失败:', deviceListRes.msg);
+      }
+    } catch (error) {
+      console.error('设备列表查询异常:', error);
+    }
+    
+  } catch (error) {
+    console.error('设备状态检查异常:', error);
+  }
 };
 
-// 移除不再使用的变量，现在使用gateExtInfo中的数据
+// 网络状态检查功能
+const checkNetworkStatus = async () => {
+  try {
+    // 检查浏览器网络连接状态
+    if (!navigator.onLine) {
+      console.warn('浏览器检测到网络离线');
+      return false;
+    }
+
+    // 尝试发送网络请求验证连接
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒超时
+
+    try {
+      const response = await fetch('/api/health-check', {
+        method: 'HEAD',
+        signal: controller.signal,
+        cache: 'no-cache'
+      });
+      clearTimeout(timeoutId);
+      return response.ok;
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      console.warn('网络连接检查失败:', fetchError);
+      return false;
+    }
+  } catch (error) {
+    console.error('网络状态检查异常:', error);
+    return false;
+  }
+};
+
+// 清理重连定时器
+const clearReconnectTimer = (channelIndex) => {
+  if (reconnectTimers.value[channelIndex]) {
+    clearTimeout(reconnectTimers.value[channelIndex]);
+    reconnectTimers.value[channelIndex] = null;
+  }
+};
+
+// 重置重连状态
+const resetReconnectState = (channelIndex) => {
+  reconnectStates.value[channelIndex] = {
+    isReconnecting: false,
+    retryCount: 0,
+    maxRetries: 5,
+    retryInterval: 5000
+  };
+  clearReconnectTimer(channelIndex);
+};
+
+// 自动重连功能
+const attemptReconnect = async (channelIndex, videoUrl) => {
+  const reconnectState = reconnectStates.value[channelIndex];
+  
+  if (reconnectState.isReconnecting) {
+    console.log(`通道 ${channelIndex + 1} 正在重连中，跳过此次重连请求`);
+    return;
+  }
+
+  if (reconnectState.retryCount >= reconnectState.maxRetries) {
+    console.error(`通道 ${channelIndex + 1} 已达到最大重试次数 (${reconnectState.maxRetries})，停止重连`);
+    ElMessage.error(`通道 ${channelIndex + 1} 网络连接失败，已达到最大重试次数`);
+    return;
+  }
+
+  reconnectState.isReconnecting = true;
+  reconnectState.retryCount++;
+  
+  console.log(`通道 ${channelIndex + 1} 开始第 ${reconnectState.retryCount} 次重连尝试...`);
+  ElMessage.info(`通道 ${channelIndex + 1} 正在尝试重连 (${reconnectState.retryCount}/${reconnectState.maxRetries})`);
+
+  // 检查网络状态
+  const networkOk = await checkNetworkStatus();
+  if (!networkOk) {
+    console.warn(`通道 ${channelIndex + 1} 网络状态异常，延迟重连`);
+  }
+
+  // 设置重连定时器
+  reconnectTimers.value[channelIndex] = setTimeout(async () => {
+    try {
+      // 销毁现有播放器
+      if (ys7VideoPlayers.value[channelIndex]) {
+        try {
+          ys7VideoPlayers.value[channelIndex].destroy();
+        } catch (destroyError) {
+          console.warn(`销毁通道 ${channelIndex + 1} 播放器时出错:`, destroyError);
+        }
+        ys7VideoPlayers.value[channelIndex] = null;
+      }
+
+      // 重新创建播放器
+      const containerId = `video-container-${channelIndex}`;
+      const container = document.getElementById(containerId);
+      
+      if (container && videoUrl) {
+        const player = new EZUIKit.EZUIKitPlayer({
+          id: containerId,
+          url: videoUrl,
+          accessToken: ys7AccessToken.value,
+          width: "100%",
+          height: "100%",
+          autoPlay: true,
+          controls: true,
+          muted: false
+        });
+
+        // 添加错误监听
+        setupPlayerErrorHandling(player, channelIndex, videoUrl);
+        
+        ys7VideoPlayers.value[channelIndex] = player;
+        
+        console.log(`通道 ${channelIndex + 1} 重连成功`);
+        ElMessage.success(`通道 ${channelIndex + 1} 重连成功`);
+        
+        // 重连成功，重置状态
+        resetReconnectState(channelIndex);
+        
+      } else {
+        throw new Error('容器元素不存在或视频URL无效');
+      }
+      
+    } catch (error) {
+      console.error(`通道 ${channelIndex + 1} 重连失败:`, error);
+      reconnectState.isReconnecting = false;
+      
+      // 如果还有重试机会，继续尝试
+      if (reconnectState.retryCount < reconnectState.maxRetries) {
+        // 递增重连间隔（指数退避）
+        const nextInterval = Math.min(reconnectState.retryInterval * Math.pow(1.5, reconnectState.retryCount - 1), 30000);
+        console.log(`通道 ${channelIndex + 1} 将在 ${nextInterval/1000} 秒后进行下次重连尝试`);
+        
+        reconnectTimers.value[channelIndex] = setTimeout(() => {
+          attemptReconnect(channelIndex, videoUrl);
+        }, nextInterval);
+      } else {
+        ElMessage.error(`通道 ${channelIndex + 1} 重连失败，已达到最大重试次数`);
+        resetReconnectState(channelIndex);
+      }
+    }
+  }, reconnectState.retryInterval);
+};
+
+// 设置播放器错误处理
+const setupPlayerErrorHandling = (player, channelIndex, videoUrl) => {
+  if (!player) return;
+
+  // 监听播放器错误事件
+  player.on('error', (error) => {
+    console.error(`通道 ${channelIndex + 1} 播放器错误:`, error);
+    
+    // 检查是否是网络异常错误（错误代码6520）
+    if (error && (error.code === 6520 || error.code === '6520')) {
+      console.log(`检测到通道 ${channelIndex + 1} 网络异常错误 (代码: ${error.code})`);
+      ElMessage.warning(`通道 ${channelIndex + 1} 设备网络异常，正在尝试重连...`);
+      
+      // 触发自动重连
+      attemptReconnect(channelIndex, videoUrl);
+    } else if (error && error.msg && error.msg.includes('网络异常')) {
+      console.log(`检测到通道 ${channelIndex + 1} 网络异常错误 (消息: ${error.msg})`);
+      ElMessage.warning(`通道 ${channelIndex + 1} ${error.msg}，正在尝试重连...`);
+      
+      // 触发自动重连
+      attemptReconnect(channelIndex, videoUrl);
+    } else {
+      // 其他类型的错误
+      console.error(`通道 ${channelIndex + 1} 发生其他错误:`, error);
+      ElMessage.error(`通道 ${channelIndex + 1} 播放错误: ${error.msg || '未知错误'}`);
+    }
+  });
+
+  // 监听播放器连接状态变化
+  player.on('playSuccess', () => {
+    console.log(`通道 ${channelIndex + 1} 播放成功`);
+    // 播放成功时重置重连状态
+    resetReconnectState(channelIndex);
+  });
+
+  player.on('playFail', (error) => {
+    console.error(`通道 ${channelIndex + 1} 播放失败:`, error);
+    // 播放失败时也可能需要重连
+    if (error && (error.code === 6520 || error.code === '6520' || (error.msg && error.msg.includes('网络异常')))) {
+      attemptReconnect(channelIndex, videoUrl);
+    }
+  });
+};
+
+// 获取指定闸站的四个通道视频URL
+const getGateStationVideoUrls = async (gateStationName) => {
+  try {
+    console.log('=== 开始获取闸站视频URL ===');
+    console.log('闸站名称:', gateStationName);
+    
+    // 获取设备序列号
+    const deviceSerial = getDeviceSerialByStationName(gateStationName);
+    console.log('获取到的设备序列号:', deviceSerial);
+    console.log('设备序列号映射表:', GATE_STATION_MAPPING);
+    
+    if (!deviceSerial) {
+      console.error('未找到闸站对应的设备序列号:', gateStationName);
+      ElMessage.error(`未找到闸站 ${gateStationName} 对应的设备`);
+      return [];
+    }
+
+    // 获取访问令牌
+    const accessToken = await getYs7AccessToken();
+    console.log('访问令牌:', accessToken ? '已获取' : '获取失败');
+    if (!accessToken) {
+      return [];
+    }
+
+    // 检查设备状态和权限
+    console.log('=== 开始检查设备状态和权限 ===');
+    await checkDeviceStatusAndPermissions(accessToken, deviceSerial);
+
+    console.log(`开始获取闸站 ${gateStationName} (${deviceSerial}) 的视频URL...`);
+    
+    // 重置加载状态
+    videoLoadingStates.value = [true, true, true, true];
+    
+    // 并行获取四个通道的视频URL
+    const urlPromises = [];
+    for (let channel = 1; channel <= 2; channel++) {
+      console.log(`准备获取通道 ${channel} 的视频URL...`);
+      const promise = getYs7LiveAddressApi(accessToken, deviceSerial, channel)
+        .then(response => {
+          console.log(`通道 ${channel} API 响应:`, response);
+          if (response && response.url) {
+            console.log(`通道 ${channel} 获取到的视频URL:`, response.url);
+            return { channel, url: response.url, success: true };
+          } else {
+            console.error(`通道 ${channel} API响应中没有视频URL:`, response);
+            throw new Error('API响应中没有视频URL');
+          }
+        })
+        .catch(error => {
+          console.error(`获取通道 ${channel} 视频URL失败:`, error);
+          console.error(`通道 ${channel} 错误详情:`, {
+            message: error.message,
+            response: error.response,
+            data: error.data
+          });
+          return { channel, url: '', success: false, error };
+        });
+      urlPromises.push(promise);
+    }
+
+    const results = await Promise.all(urlPromises);
+    
+    // 处理结果
+    const videoUrls = ['', '', '', ''];
+    let successCount = 0;
+    
+    results.forEach(result => {
+      const index = result.channel - 1;
+      videoLoadingStates.value[index] = false;
+      
+      if (result.success && result.url) {
+        videoUrls[index] = result.url;
+        successCount++;
+        console.log(`通道 ${result.channel} 视频URL获取成功:`, result.url);
+      } else {
+        console.error(`通道 ${result.channel} 视频URL获取失败:`, result.error);
+      }
+    });
+
+    ys7VideoUrls.value = videoUrls;
+    
+    // 初始化 EZUIKit 播放器
+    await nextTick(); // 确保 DOM 已更新
+    initEZUIKitPlayers(videoUrls);
+    
+    if (successCount > 0) {
+      ElMessage.success(`成功获取 ${successCount} 个通道的视频地址`);
+    } else {
+      ElMessage.error('所有通道的视频地址获取失败');
+    }
+
+    return videoUrls;
+  } catch (error) {
+    console.error('获取闸站视频URL失败:', error);
+    ElMessage.error('获取视频地址失败');
+    // 重置加载状态
+    videoLoadingStates.value = [false, false, false, false];
+    return [];
+  }
+};
+
+// EZUIKit 预初始化
+const preInitEZUIKit = async () => {
+  try {
+    // 获取当前选中闸站的设备序列号
+    const currentStationName = selectedDamNode.value?.name;
+    let deviceSerial = 'FT8680159'; // 默认设备序列号（松溪左岸1号闸站）
+    
+    if (currentStationName) {
+      const stationDeviceSerial = getDeviceSerialByStationName(currentStationName);
+      if (stationDeviceSerial) {
+        deviceSerial = stationDeviceSerial;
+      }
+    }
+    
+    console.log('预初始化使用的设备序列号:', deviceSerial);
+    
+    // 使用实际的设备序列号构建 ezopen URL
+    const preInitUrl = `ezopen://open.ys7.com/${deviceSerial}/1.live`;
+    console.log('预初始化 URL:', preInitUrl);
+    
+    // 使用当前的 access token 进行预初始化
+    const res = await EZUIKit.EZUIKitPlayer.preInit({
+      url: preInitUrl,
+      accessToken: ys7AccessToken.value
+    });
+    console.log("EZUIKit preInit success:", res);
+    return true;
+  } catch (err) {
+    console.log("EZUIKit preInit fail:", err);
+    return false;
+  }
+};
+
+// 清理萤石云视频播放器
+const cleanupYs7Videos = () => {
+  console.log('清理 EZUIKit 视频播放器...');
+  
+  ys7VideoPlayers.value.forEach((player, index) => {
+    if (player) {
+      try {
+        // 销毁 EZUIKit 播放器实例
+        player.destroy();
+      } catch (error) {
+        console.warn(`清理 EZUIKit 播放器 ${index + 1} 时出错:`, error);
+      }
+    }
+  });
+  
+  // 重置状态
+  ys7VideoPlayers.value = [null, null, null, null];
+  ys7VideoUrls.value = ['', '', '', ''];
+  videoLoadingStates.value = [false, false, false, false];
+};
+
+// 初始化 Ezuikit-flv 播放器
+const initEZUIKitPlayers = async (videoUrls) => {
+  console.log('初始化 EZUIKit 播放器...');
+  
+  // 先进行预初始化
+  const preInitSuccess = await preInitEZUIKit();
+  if (!preInitSuccess) {
+    console.warn('EZUIKit 预初始化失败，继续尝试创建播放器...');
+  }
+  
+  videoUrls.forEach((url, index) => {
+    if (url) {
+      try {
+        const containerId = `video-container-${index}`;
+        const container = document.getElementById(containerId);
+        
+        if (container) {
+          // 重置该通道的重连状态
+          resetReconnectState(index);
+          
+          // 创建 EZUIKit 播放器实例
+          const player = new EZUIKit.EZUIKitPlayer({
+            id: containerId,
+            url: url,
+            accessToken: ys7AccessToken.value,
+            width: "100%",
+            height: "100%",
+            // 其他初始化参数
+            autoPlay: true,
+            controls: true,
+            muted: false,
+            // 隐藏视频技术信息显示
+            showInfo: false,
+            showStats: false,
+            showDebugInfo: false
+          });
+          
+          // 设置错误处理和自动重连
+          setupPlayerErrorHandling(player, index, url);
+          
+          ys7VideoPlayers.value[index] = player;
+          console.log(`通道 ${index + 1} EZUIKit 播放器初始化成功`);
+        } else {
+          console.error(`未找到容器元素: ${containerId}`);
+        }
+      } catch (error) {
+        console.error(`初始化通道 ${index + 1} EZUIKit 播放器失败:`, error);
+      }
+    }
+  });
+};
+
+// 初始化萤石云视频播放
+const initYs7VideoPlayback = async (gateStationName) => {
+  if (!gateStationName) {
+    console.log('闸站名称为空，跳过视频初始化');
+    return;
+  }
+
+  console.log('初始化萤石云视频播放:', gateStationName);
+  
+  // 清理现有播放器
+  cleanupYs7Videos();
+  
+  // 获取视频URL
+  await getGateStationVideoUrls(gateStationName);
+};
 
 // --- Confirmation Dialog Logic ---
 const dialogVisible = ref(false);
@@ -1504,9 +1592,7 @@ watch(selectedDamNode, async (newNode, oldNode) => {
   stopGateExtInfoTimer();
 
   // 清空视频相关状态
-  cameraDevices.value = [];
-  selectedCameraDevice.value = '';
-  cleanup();
+  cleanupYs7Videos();
 
   // 清空表单数据（切换节点时才清空）
   gateOpeningForm.openingValue = null;
@@ -1521,15 +1607,8 @@ watch(selectedDamNode, async (newNode, oldNode) => {
       await fetchGateExtendedInfo(newNode.gateStationCode);
       await fetchControlDeviceCode(newNode.gateStationCode);
       
-      // 获取摄像设备列表
-      await fetchCameraDevices(newNode.gateStationCode);
-      
-      // 查询完成后自动播放所有摄像设备的视频
-      if (cameraDevices.value && cameraDevices.value.length > 0) {
-        console.log('自动播放摄像设备视频，设备数量:', cameraDevices.value.length);
-        // 自动播放所有摄像设备
-        await handleMultipleCameraDeviceChange(cameraDevices.value);
-      }
+      // 初始化 Yingshiyun 视频播放
+      await initYs7VideoPlayback(newNode.gateStationCode);
       
       // 启动定时器
       startGateExtInfoTimer(newNode.gateStationCode);
@@ -2004,16 +2083,20 @@ onBeforeUnmount(async () => {
   &.single-video {
     grid-template-columns: 1fr;
     grid-template-rows: 1fr;
-    // height: 900px;
   }
   
   &.dual-video {
     grid-template-columns: 1fr;
     grid-template-rows: 1fr 1fr;
-    // height: 450px;
   }
   
   &.quad-video {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    height: 450px;
+  }
+  
+  &.video-grid-4 {
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr 1fr;
     height: 450px;
@@ -2023,7 +2106,6 @@ onBeforeUnmount(async () => {
     grid-template-columns: repeat(3, 1fr);
     grid-auto-rows: 200px;
     height: auto;
-    // min-height: 450px;
   }
 }
 
@@ -2032,7 +2114,21 @@ onBeforeUnmount(async () => {
   background-color: #000;
   border-radius: 4px;
   overflow: hidden;
-  min-height: 450px; 
+  min-height: 220px; 
+  
+  // 隐藏 EZUIKit 播放器的技术信息显示
+  :deep(.ezuikit-info),
+  :deep(.ezuikit-stats),
+  :deep(.ezuikit-debug-info),
+  :deep(.video-info),
+  :deep(.video-stats),
+  :deep(.debug-info),
+  :deep(.player-info),
+  :deep(.stream-info) {
+    display: none !important;
+    visibility: hidden !important;
+  }
+  
   .video-header {
     position: absolute;
     top: 0;
@@ -2051,12 +2147,34 @@ onBeforeUnmount(async () => {
       font-weight: 500;
     }
     
+    .video-status {
+      font-size: 10px;
+      
+      .loading-text {
+        color: #ffd700;
+      }
+      
+      .connected-text {
+        color: #67c23a;
+      }
+      
+      .disconnected-text {
+        color: #f56c6c;
+      }
+    }
+    
     .el-button {
       padding: 2px 6px;
       font-size: 10px;
       height: auto;
       line-height: 1.2;
     }
+  }
+  
+  .video-wrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
   }
 }
 

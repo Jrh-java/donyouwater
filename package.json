@@ -18,6 +18,8 @@
     "echarts": "^5.5.1",
     "element-plus": "^2.7.7",
     "eslint-utils": "^3.0.0",
+    "ezuikit-flv": "^2.0.2",
+    "ezuikit-js": "^8.1.16",
     "flv.js": "^1.6.2",
     "gsap": "^3.13.0",
     "highcharts": "^11.4.6",

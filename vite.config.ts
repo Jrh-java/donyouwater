@@ -32,6 +32,12 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/authApi/, ''),
       },
+      '/ys7Api': {
+        target: 'https://open.ys7.com',
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/ys7Api/, ''),
+      },
     },
   },
   resolve: {

@@ -46,7 +46,7 @@ service.interceptors.response.use(
 
     // 对于其他接口，我们检查通用的 code
     // 假设 code 为 0 或 200 是成功的标志 (请根据您的后端调整)
-    if (res.code !== 200 && res.code !== 0) { 
+    if (res.code !== 200 && res.code !== 0 && res.code !== '200') {
       console.error('API Error:', res.message || 'Unknown error');
       // 可在此处添加全局错误提示，如 Element Plus 的 Message
       // import { ElMessage } from 'element-plus';
