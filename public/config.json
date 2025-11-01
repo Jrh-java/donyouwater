@@ -1,0 +1,6 @@
+{
+  "videoStreamBaseUrl": "ws://220.250.41.101:8866",
+  "rtmpServer": "119.3.245.90",
+  "rtmpPort": 1935,
+  "description": "视频流服务配置文件，部署后可直接修改此文件来更新配置，现在使用WebSocket协议"
+}

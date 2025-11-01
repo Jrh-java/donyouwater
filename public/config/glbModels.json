@@ -1,0 +1,120 @@
+[
+  {
+    "id": "glbModel-FJ.JODY.FH01.Z03.STATION",
+    "name": "松溪左岸3号闸站",
+    "url": "/glb/zhazhan.glb",
+    "position": {
+      "longitude": 118.62623907487557,
+      "latitude": 27.153500,
+      "height": 0
+    },
+    "orientation": {
+      "heading": 40,
+      "pitch": 0,
+      "roll": 0
+    },
+    "scale": 0.45,
+    "enableDebugWireframe": false
+  },
+  {
+
+    "id": "glbModel-zhamen1-YN16220300000715",
+    "url": "/glb/zhamen.glb",
+    "position": {
+      "longitude": 118.62623077871247,
+      "latitude": 27.153498563888877,
+      "height": -5
+    },
+    "orientation": {
+      "heading": 40,
+      "pitch": 0,
+      "roll": 0
+    },
+    "scale": 0.45,
+    "clickable": true
+  },
+  {
+    "id": "glbModel-zhamen2-YN16220300000715",
+    "url": "/glb/zhamen.glb",
+    "position": {
+      "longitude": 118.62628577871247,
+      "latitude": 27.15356063888877,
+      "height": -5
+    },
+    "orientation": {
+      "heading": 40,
+      "pitch": 0,
+      "roll": 0
+    },
+    "scale": 0.45,
+    "clickable": true
+  },
+  {
+    "id": "glbModel-FJ.JODY.FH01.Z05.STATION",
+    "name": "松溪左岸1号闸站",
+    "url": "/glb/zhazhan.glb",
+    "position": {
+      "longitude": 118.64401830350669,
+      "latitude": 27.167098,
+      "height": 0
+    },
+    "orientation": {
+      "heading": 65,
+      "pitch": 0,
+      "roll": 0
+    },
+    "scale": 0.45,
+    "enableDebugWireframe": false
+  },
+  {
+    "id": "glbModel-FJ.JODY.FH01.Z01.STATION",
+    "name": "松溪右岸2号闸站",
+    "url": "/glb/zhazhan.glb",
+    "position": {
+      "longitude": 118.62096686616962,
+      "latitude": 27.148004,
+      "height": 0
+    },
+    "orientation": {
+      "heading": 220,
+      "pitch": 0,
+      "roll": 0
+    },
+    "scale": 0.45,
+    "enableDebugWireframe": false
+  },
+  {
+    "id": "glbModel-FJ.JODY.FH01.Z02.STATION",
+    "name": "松溪右岸1号闸站",
+    "url": "/glb/zhazhan.glb",
+    "position": {
+      "longitude": 118.62472044328591,
+      "latitude": 27.154392,
+      "height": 0
+    },
+    "orientation": {
+      "heading": 220,
+      "pitch": 0,
+      "roll": 0
+    },
+    "scale": 0.45,
+    "enableDebugWireframe": false
+  },
+  {
+    "id": "glbModel-FJ.JODY.FH01.Z04.STATION",
+    "name": "松溪左岸2号闸站",
+    "url": "/glb/zhazhan.glb",
+    "position": {
+      "longitude": 118.635288,
+      "latitude": 27.161022,
+      "height": 0
+    },
+    "orientation": {
+      "heading": 45,
+      "pitch": 0,
+      "roll": 0
+    },
+    "scale": 0.45,
+    "enableDebugWireframe": false
+  }
+]
