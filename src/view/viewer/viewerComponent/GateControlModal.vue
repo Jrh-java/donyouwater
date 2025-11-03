@@ -341,23 +341,28 @@
                 <div class="gate-external-monitor">
                   <!-- 多视频播放区域 -->
                   <div class="multi-video-display-area">
-                    <div v-if="videoPlayers.length === 0" class="video-placeholder">
-                      <div style="text-align: center; color: #999;">
-                        <div style="font-size: 48px; margin-bottom: 10px;">📹</div>
-                        <div style="font-size: 16px;">暂无视频播放</div>
-                      </div>
-                    </div>
-                    <div v-else class="video-grid" :class="getVideoGridClass()">
-                      <div v-for="(player, index) in videoPlayers" :key="player.deviceCode" class="video-container">
+                    <div class="video-grid video-grid-4">
+                      <div v-for="(videoUrl, index) in ys7VideoUrls" :key="`video-${index}`" class="video-container">
                         <div class="video-header">
-                          <span class="video-title">{{ player.deviceName }}</span>
+                          <span class="video-title">通道 {{ index + 1 }}</span>
+                          <div class="video-status">
+                            <span v-if="videoLoadingStates[index]" class="loading-text">加载中...</span>
+                  
+                          </div>
                         </div>
-                        <video :ref="el => setVideoRef(el, index)" class="video-player" controls muted autoplay
-                          style="width: 100%; height: 100%; background-color: #000;">
-                          您的浏览器不支持视频播放
-                        </video>
-                        <div class="video-status-overlay">
-                          <span v-if="player.connectTime">连接时间: {{ player.connectTime }}</span>
+                        <div class="video-wrapper">
+                          <div 
+                            :id="`video-container-${index}`"
+                            class="video-player" 
+                            style="width: 100%; height: 100%; background-color: #000;"
+                          >
+                            <div v-if="!videoUrl" class="video-placeholder">
+                              <div style="text-align: center; color: #999;">
+                                <div style="font-size: 32px; margin-bottom: 8px;">📹</div>
+                                <div style="font-size: 14px;">暂无视频</div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -439,13 +444,34 @@ import { Picture, VideoCamera, CaretRight, Close, Histogram, DataLine, InfoFille
 import { ElMessage, ElDialog, ElInput, ElButton, ElDivider } from 'element-plus';
 import { gateOnOrOff, getMonitorDevicesByGateStationCodeApi, sendDeviceCommandApi, getDeviceManagementInfo, getGateExtInfo, getGateTaskList, taskSend, setGateOpeningRate, getOsmoticPressureWeekMaxApi, getEnvMcvTitleCollect, getCurrentPrecipitation } from '@/api/reservoir';
 import { getDeviceManagementPage } from '@/api/device';
+import { getYs7TokenApi, getYs7LiveAddressApi, getYs7DeviceInfoApi, getYs7DeviceListApi } from '@/api/ys7';
 import DisplacementTable from '@/components/DisplacementTable.vue';
 import flvjs from 'flv.js';
 import * as echarts from 'echarts';
 import { useRouter } from 'vue-router';
 import { buildFlvUrl } from '@/utils/config';
+// 引入 EZUIKit 播放器
+import EZUIKit from "ezuikit-js";
 
 const router = useRouter();
+
+// 闸站代码到闸站名称的映射
+const CODE_TO_NAME_MAPPING = {
+  'FJ.JODY.FH01.Z05.STATION': '松溪左岸1号闸站',
+  'FJ.JODY.FH01.Z04.STATION': '松溪左岸2号闸站',
+  'FJ.JODY.FH01.Z03.STATION': '松溪左岸3号闸站',
+  'FJ.JODY.FH01.Z02.STATION': '松溪右岸1号闸站',
+  'FJ.JODY.FH01.Z01.STATION': '松溪右岸2号闸站'
+};
+
+// 闸站名称到设备序列号的映射
+const GATE_STATION_MAPPING = {
+  '松溪左岸1号闸站': 'FT8680159',
+  '松溪左岸2号闸站': 'FT4489510', 
+  '松溪左岸3号闸站': 'FT8680213',
+  '松溪右岸1号闸站': 'FT4489479',
+  '松溪右岸2号闸站': 'FT4489367'
+};
 
 const handleClick = (tab) => {
   activeName.value = tab.name;
@@ -504,7 +530,15 @@ const gatePortOptions = ref([
 // 设备编码（用于控制操作）
 const controlDeviceCode = ref('');
 
-// 视频播放相关
+// 荧石云视频播放相关
+const ys7AccessToken = ref('');
+const ys7TokenExpireTime = ref(0);
+const videoLoadingStates = ref([false, false, false, false]);
+const ys7VideoUrls = ref(['', '', '', '']); // 四个通道的视频URL
+const ys7VideoPlayers = ref([null, null, null, null]); // 四个通道的 EZUIKit 播放器实例
+const reconnectStates = ref([false, false, false, false]);
+
+// 兼容性保留的变量（用于其他功能）
 const cameraDevices = ref([]);
 const selectedCameraDevice = ref('');
 const videoElement = ref(null);
@@ -671,6 +705,29 @@ const closeModal = () => {
   emit('close');
 };
 
+// 清理荧石云视频播放器
+const cleanupYs7Videos = () => {
+  console.log('清理 EZUIKit 视频播放器...');
+  
+  ys7VideoPlayers.value.forEach((player, index) => {
+    if (player) {
+      try {
+        // 销毁 EZUIKit 播放器实例
+        player.destroy();
+        console.log(`✓ 清理 EZUIKit 播放器 ${index + 1} 成功`);
+      } catch (error) {
+        console.warn(`清理 EZUIKit 播放器 ${index + 1} 时出错:`, error);
+      }
+    }
+  });
+  
+  // 重置播放器数组
+  ys7VideoPlayers.value = [null, null, null, null];
+  
+  // 重置视频URL数组
+  ys7VideoUrls.value = ['', '', '', ''];
+};
+
 // 清理所有资源
 const cleanupResources = () => {
   // 停止定时器
@@ -678,6 +735,9 @@ const cleanupResources = () => {
 
   // 停止视频播放
   stopVideo();
+
+  // 清理荧石云视频播放器
+  cleanupYs7Videos();
 
   // 销毁图表实例
   if (seepagePressureChart.value && seepagePressureChart.value.dispose) {
@@ -697,7 +757,15 @@ const resetAllStates = () => {
   selectedGatePort.value = '';
   controlDeviceCode.value = '';
 
-  // 重置视频相关状态
+  // 重置荧石云视频相关状态
+  ys7AccessToken.value = '';
+  ys7TokenExpireTime.value = 0;
+  videoLoadingStates.value = [false, false, false, false];
+  ys7VideoUrls.value = ['', '', '', ''];
+  ys7VideoPlayers.value = [null, null, null, null];
+  reconnectStates.value = [false, false, false, false];
+
+  // 重置兼容性视频相关状态
   cameraDevices.value = [];
   selectedCameraDevice.value = '';
   videoUrl.value = '';
@@ -868,6 +936,40 @@ const handleGatePortChange = (selectedPort) => {
 };
 
 // 生成数学题
+// 根据闸站名称获取设备序列号
+const getDeviceSerialByStationName = (stationName) => {
+  return GATE_STATION_MAPPING[stationName] || null;
+};
+
+// 获取萤石云访问令牌
+const getYs7AccessToken = async () => {
+  try {
+    // 检查令牌是否还有效（提前5分钟刷新）
+    const now = Date.now();
+    if (ys7AccessToken.value && ys7TokenExpireTime.value > now + 5 * 60 * 60 * 1000) {
+      return ys7AccessToken.value;
+    }
+
+    console.log('获取萤石云访问令牌...');
+    const tokenData = await getYs7TokenApi();
+    
+    if (tokenData && tokenData.accessToken) {
+      ys7AccessToken.value = tokenData.accessToken;
+      // 设置过期时间（通常为7天，这里设置为6天23小时以确保提前刷新）
+      ys7TokenExpireTime.value = now + (tokenData.expireTime || 7 * 24 * 60 * 60 * 1000) - 60 * 60 * 1000;
+      console.log('萤石云令牌获取成功:', tokenData.accessToken);
+      return tokenData.accessToken;
+    } else {
+      throw new Error('获取令牌失败：响应数据无效');
+    }
+  } catch (error) {
+    console.error('获取萤石云访问令牌失败:', error);
+    ElMessage.error('获取萤石云访问令牌失败');
+    return null;
+  }
+};
+
+// 生成数学验证题
 const generateMathProblem = () => {
   const num1 = Math.floor(Math.random() * 20) + 1;
   const num2 = Math.floor(Math.random() * 20) + 1;
@@ -889,6 +991,182 @@ const generateMathProblem = () => {
   }
 
   mathProblem.value = { question, answer };
+};
+
+// 获取闸站视频URL
+const getGateStationVideoUrls = async (gateStationCode) => {
+  try {
+    console.log('开始获取闸站视频URL:', gateStationCode);
+    
+    // 通过闸站代码获取闸站名称
+    const gateStationName = CODE_TO_NAME_MAPPING[gateStationCode];
+    if (!gateStationName) {
+      console.error('未找到对应的闸站名称:', gateStationCode);
+      ElMessage.error('未找到对应的闸站配置');
+      return [];
+    }
+
+    // 通过闸站名称获取设备序列号
+    const deviceSerial = getDeviceSerialByStationName(gateStationName);
+    if (!deviceSerial) {
+      console.error('未找到对应的设备序列号:', gateStationName);
+      ElMessage.error('未找到对应的设备配置');
+      return [];
+    }
+
+    console.log(`闸站映射: ${gateStationCode} -> ${gateStationName} -> ${deviceSerial}`);
+
+    // 获取访问令牌
+    const accessToken = await getYs7AccessToken();
+    if (!accessToken) {
+      return [];
+    }
+
+    console.log(`开始获取闸站 ${gateStationName} (${deviceSerial}) 的视频URL...`);
+    
+    // 重置加载状态
+    videoLoadingStates.value = [true, true, true, true];
+    
+    const videoUrls = ['', '', '', ''];
+    const channelPromises = [];
+    
+    // 为每个通道创建独立的获取任务
+    for (let channel = 1; channel <= 4; channel++) {
+      channelPromises.push(
+        getYs7LiveAddressApi(accessToken, deviceSerial, channel)
+          .then(response => ({ channel, response, success: true }))
+          .catch(error => ({ channel, error, success: false }))
+      );
+    }
+    
+    // 并行获取所有通道的结果
+    const channelResults = await Promise.all(channelPromises);
+    let successCount = 0;
+    
+    // 处理每个通道的结果
+    channelResults.forEach(result => {
+      const { channel, response, error, success } = result;
+      const urlIndex = channel - 1;
+      
+      if (success && response && response.url) {
+        console.log(`✓ 通道 ${channel} 获取成功:`, response.url);
+        videoUrls[urlIndex] = response.url;
+        successCount++;
+      } else {
+        if (error && error.code === 20017) {
+          console.log(`通道 ${channel} 不存在 (错误码: 20017)，窗口 ${channel} 将保持空白`);
+        } else {
+          console.error(`通道 ${channel} 获取失败:`, error, `，窗口 ${channel} 将保持空白`);
+        }
+        videoUrls[urlIndex] = '';
+      }
+    });
+    
+    console.log(`✓ 成功获取 ${successCount} 个独立通道的视频源`);
+    
+    if (successCount > 0) {
+      ElMessage.success(`成功获取 ${successCount} 个独立通道的视频源`);
+    } else {
+      console.error('所有通道都无法获取视频URL');
+      ElMessage.error('无法获取任何视频源');
+    }
+
+    // 重置加载状态
+    videoLoadingStates.value = [false, false, false, false];
+    ys7VideoUrls.value = videoUrls;
+    
+    // 初始化 EZUIKit 播放器
+    initEZUIKitPlayers(videoUrls);
+
+    return videoUrls;
+  } catch (error) {
+    console.error('获取闸站视频URL失败:', error);
+    ElMessage.error('获取视频地址失败');
+    videoLoadingStates.value = [false, false, false, false];
+    return [];
+  }
+};
+
+// 初始化 EZUIKit 播放器
+const initEZUIKitPlayers = async (videoUrls) => {
+  console.log('初始化 EZUIKit 播放器...');
+  
+  // 清理现有播放器
+  cleanupYs7Videos();
+  
+  // 等待DOM更新
+  await nextTick();
+  
+  for (let index = 0; index < videoUrls.length; index++) {
+    const videoUrl = videoUrls[index];
+    const channelNumber = index + 1;
+    const containerId = `video-container-${index}`;
+    
+    try {
+      console.log(`初始化通道 ${channelNumber} 播放器...`);
+      
+      // 检查DOM元素是否存在
+      const containerElement = document.getElementById(containerId);
+      if (!containerElement) {
+        console.error(`✗ 通道 ${channelNumber} 容器元素不存在: ${containerId}`);
+        ys7VideoPlayers.value[index] = null;
+        continue;
+      }
+      
+      if (!videoUrl) {
+        console.log(`通道 ${channelNumber} 无视频URL，跳过初始化`);
+        ys7VideoPlayers.value[index] = null;
+        continue;
+      }
+      
+      // 创建 EZUIKit 播放器实例
+      const player = new EZUIKit.EZUIKitPlayer({
+        id: containerId,
+        accessToken: ys7AccessToken.value,
+        url: videoUrl,
+        template: 'simple',
+        plugin: ['talk'],
+        width: 300,
+        height: 200,
+        autoplay: true,
+        split: 1,
+        audio: 1,
+        openSoundCallBack: (data) => console.log('开启声音回调:', data),
+        closeSoundCallBack: (data) => console.log('关闭声音回调:', data),
+        startTalkCallBack: (data) => console.log('开启对讲回调:', data),
+        stopTalkCallBack: (data) => console.log('关闭对讲回调:', data)
+      });
+
+      // 播放器创建后立即隐藏流信息
+      if (player && typeof player.displayStreamInfo === 'function') {
+        player.displayStreamInfo(false);
+      }
+
+      ys7VideoPlayers.value[index] = player;
+      console.log(`✓ 通道 ${channelNumber} EZUIKit 播放器初始化成功`);
+    } catch (error) {
+      console.error(`✗ 初始化通道 ${channelNumber} EZUIKit 播放器失败:`, error);
+      ys7VideoPlayers.value[index] = null;
+    }
+  }
+};
+
+
+
+// 初始化萤石云视频播放
+const initYs7VideoPlayback = async (gateStationCode) => {
+  if (!gateStationCode) {
+    console.log('闸站代码为空，跳过视频初始化');
+    return;
+  }
+
+  console.log('初始化萤石云视频播放:', gateStationCode);
+  
+  // 清理现有播放器
+  cleanupYs7Videos();
+  
+  // 获取视频URL
+  await getGateStationVideoUrls(gateStationCode);
 };
 
 // 显示确认弹窗
@@ -2042,11 +2320,13 @@ const initializeModal = (gateStationCode) => {
   fetchGateExtendedInfo(gateStationCode);
   fetchControlDeviceCode(gateStationCode);
   startGateExtInfoTimer(gateStationCode);
-  fetchCameraDevices(gateStationCode);
   fetchTaskList(gateStationCode);
   fetchDeviceList();
   fetchOsmoticPressureData(gateStationCode);
   fetchEnvDeviceList();
+
+  // 初始化荧石云视频播放
+  initYs7VideoPlayback(gateStationCode);
 
   // 初始化图表
   nextTick(() => {
@@ -2693,6 +2973,11 @@ onBeforeUnmount(() => {
   &.quad-video {
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr 1fr;
+  }
+  
+  &.video-grid-4 {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
     height: 450px;
   }
   
@@ -2708,7 +2993,55 @@ onBeforeUnmount(() => {
   background-color: #000;
   border-radius: 4px;
   overflow: hidden;
-  min-height: 450px;
+  min-height: 220px;
+  
+  // 隐藏 EZUIKit 播放器的技术信息显示
+  :deep(.ezuikit-info),
+  :deep(.ezuikit-stats),
+  :deep(.ezuikit-debug-info),
+  :deep(.video-info),
+  :deep(.video-stats),
+  :deep(.debug-info),
+  :deep(.player-info),
+  :deep(.stream-info),
+  :deep(.fps-info),
+  :deep(.bitrate-info),
+  :deep(.resolution-info),
+  :deep(.codec-info),
+  :deep(.overlay-info),
+  :deep(.tech-info),
+  :deep(.monitor-info),
+  :deep(.performance-info),
+  :deep(.network-info),
+  :deep([class*="info"]),
+  :deep([class*="stats"]),
+  :deep([class*="debug"]),
+  :deep([class*="fps"]),
+  :deep([class*="bitrate"]),
+  :deep([class*="codec"]),
+  :deep([class*="resolution"]),
+  :deep([class*="monitor"]),
+  :deep([class*="performance"]),
+  :deep([class*="network"]) {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    position: absolute !important;
+    left: -9999px !important;
+    top: -9999px !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+  }
+  
+  // 隐藏 EZUIKit 播放器的工具栏和控制条
+  :deep(.ezuikit-video-player) {
+    .ezuikit-video-toolbar,
+    .ezuikit-video-controls,
+    .ezuikit-video-info {
+      display: none !important;
+    }
+  }
   
   .video-header {
     position: absolute;
@@ -2727,59 +3060,117 @@ onBeforeUnmount(() => {
       font-size: 12px;
       font-weight: 500;
     }
-    
-    .video-status {
-      font-size: 11px;
-      opacity: 0.8;
-    }
   }
+}
+
+.video-status {
+  font-size: 11px;
+  
+  .loading-text {
+    color: #faad14;
+  }
+  
+  .connected-text {
+    color: #52c41a;
+  }
+  
+  .disconnected-text {
+    color: #f56c6c;
+  }
+}
+
+.video-wrapper {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.video-player {
+  width: 100%;
+  height: 100%;
+  background-color: #000;
+}
+
+.video-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #1a1a1a;
+  color: #666;
+}
+
+// 荧石云视频播放器容器
+.ezuikit-video-player {
+  width: 100%;
+  height: 100%;
+  background-color: #000;
   
   video {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    background-color: #000;
   }
-  
-  .video-loading {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: white;
-    font-size: 14px;
-    z-index: 5;
-  }
-  
-  .video-error {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: #f56c6c;
-    font-size: 14px;
-    text-align: center;
-    z-index: 5;
-  }
-  
-  .no-device-tip {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 200px;
-    color: #a0cfff;
+}
 
-    .el-icon {
-      font-size: 48px;
-      margin-bottom: 12px;
-      color: #1e4a8c;
-    }
-
-    .tip-text {
-      font-size: 14px;
-    }
+.video-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 14px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  
+  .loading-spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid #1e4a8c;
+    border-top: 2px solid #1890ff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
   }
+}
+
+.video-error {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #f56c6c;
+  font-size: 14px;
+  text-align: center;
+  z-index: 5;
+}
+
+.no-device-tip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #a0cfff;
+
+  .el-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+    color: #1e4a8c;
+  }
+
+  .tip-text {
+    font-size: 14px;
+  }
+}
+
+// 加载动画
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 // 闸门详情内容区域样式
