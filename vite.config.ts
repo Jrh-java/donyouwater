@@ -27,7 +27,7 @@ export default defineConfig({
       },
       '/authApi': {
         // target: 'http://192.168.31.141:9050 ',
-        target: 'http://220.250.41.136:9050',
+        target: 'http://192.168.9.251:9050',
         
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/authApi/, ''),

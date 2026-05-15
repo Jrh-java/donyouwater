@@ -4,7 +4,7 @@
       <!-- Left Side -->
       <el-col :span="10" class="content-col">
         <div class="column-header">
-          <span>闸门控制</span>
+          <span>{{ gateControlTitle }}</span>
         </div>
         <div class="gate-internal-monitor">
           <div class="gate-controls">
@@ -535,6 +535,12 @@ const getDeviceSerialByStationName = (stationNameOrCode) => {
 
 // 计算属性：获取当前选中的节点
 const selectedDamNode = computed(() => store.selectedDamNode);
+
+const gateControlTitle = computed(() => {
+  const node = selectedDamNode.value;
+  const nodeName = node?.label || node?.gateStationName || node?.reservoirName || '';
+  return nodeName ? `${nodeName}闸门控制` : '闸门控制';
+});
 
 // 计算属性：获取一号闸口信息
 const gate1Info = computed(() => {
